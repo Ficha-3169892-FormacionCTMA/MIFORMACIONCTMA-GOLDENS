@@ -98,3 +98,15 @@ Actualmente la aplicación cuenta con:
 - Documentación inicial del proyecto.
 
 Las siguientes semanas incorporarán nuevas funcionalidades como gestión de actividades, almacenamiento de datos y navegación entre pantallas.
+
+# Semana 2
+
+## Cambios realizados
+
+- Se creó el paquete model.
+- Se implementó la clase ActividadFormativa.
+- Se creó el enum Prioridad.
+- Se desarrollaron las reglas de negocio.
+- Se implementó la búsqueda de actividades.
+- Se calcula el promedio de progreso.
+- Se muestran datos calculados en la pantalla inicial.
