@@ -28,7 +28,7 @@ class ActividadPruebasTest {
 
     // CP-02
     @Test
-    fun `CP-02 - Límite exacto de progreso 0 retorna estado Pendiente`() {
+    fun `CP-02 - Limite exacto de progreso 0 retorna estado Pendiente`() {
         val actividad = ActividadFormativa(
             id = 10L,
             titulo = "MVVM",
@@ -67,7 +67,7 @@ class ActividadPruebasTest {
     fun `CP-04 - Progreso 99 retorna estado En Proceso`() {
         val actividad = ActividadFormativa(
             id = 4L,
-            titulo = "Navegación",
+            titulo = "Navegacion",
             descripcion = null,
             fechaInicio = fechaHoy,
             fechaFin = fechaHoy.plusDays(1),

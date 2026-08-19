@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="et_documento" type="id" />
+    <item name="et_password" type="id" />
+    <item name="btn_login" type="id" />
+    <item name="et_buscar_aprendiz" type="id" />
+    <item name="btn_consultar" type="id" />
+    <item name="tv_error_status" type="id" />
+</resources>
