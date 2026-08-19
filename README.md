@@ -81,6 +81,9 @@ Publicar actividades, establecer fechas de entrega y realizar seguimiento al ava
 - Material Design 3
 - Navigation Compose
 - ViewModel & LiveData/State
+- Retrofit & OkHttp (Networking)
+- MockWebServer (API Testing)
+- Espresso & Compose Test (UI Testing)
 - Gradle (Kotlin DSL)
 - Git & GitHub
 
@@ -100,18 +103,17 @@ Publicar actividades, establecer fechas de entrega y realizar seguimiento al ava
 - Diseño de tarjetas (`ActividadCard`) y listas dinámicas.
 - Aplicación de Material Design 3 y principios de accesibilidad.
 
-## Semana 4: Estado, Formularios y Navegación
-- **Arquitectura UDF (Unidirectional Data Flow)**: Implementación de `ViewModel`, `UiState` y eventos para un flujo de datos predecible.
-- **Navegación**: Integración de `Navigation Compose` con rutas para Listado, Creación (Formulario) y Detalle de actividad.
-- **Formularios con Validación**: 
-    - Título obligatorio (3-80 caracteres).
-    - Descripción opcional (máx. 240 caracteres).
-    - Progreso validado (0-100).
-    - Lógica de fechas (fecha de inicio no anterior a hoy).
-- **Gestión de Estado**: Uso de `ViewModel` para mantener los datos durante cambios de configuración (rotación) y navegación.
-- **Interactividad**: Protección contra doble toque en botones de acción y transiciones fluidas entre pantallas.
+## Semana 4: Estado, Navegación y Pruebas HTTP
+- **Arquitectura UDF (Unidirectional Data Flow)**: Implementación de `ViewModel`, `UiState` y eventos.
+- **Navegación**: Integración de `Navigation Compose` (Lista, Formulario, Detalle, Login).
+- **Formularios con Validación**: Título, descripción, progreso y validación lógica de fechas.
+- **Networking & Monitoreo**: 
+    - Configuración de `Retrofit` y `OkHttp` con interceptores para inspección de tráfico en Logcat.
+    - Inyección automática de Tokens Bearer para seguridad.
+- **Pruebas Unitarias (API)**: Validación de contratos y códigos de estado (403 Forbidden, 422 Unprocessable Content) usando `MockWebServer`.
+- **Pruebas de UI (Seguridad)**: Verificación automatizada con Espresso/Compose para el bloqueo de interfaz ante errores de autorización (403).
 
 ---
 
 # Estado actual
-✅ **Semana 4 completada.** La aplicación es funcional y permite el flujo completo de gestión de actividades formativas.
+✅ **Semana 4 completada.** La aplicación es funcional, segura y cuenta con una arquitectura robusta de pruebas y monitoreo de red.
