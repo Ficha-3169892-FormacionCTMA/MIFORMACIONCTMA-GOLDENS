@@ -1,6 +1,5 @@
 package com.samuel.miformacionctma.ui.components
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -14,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.model.estadoActividad
+import java.time.LocalDate
 
 @Composable
 fun TarjetaActividad(
@@ -86,6 +86,13 @@ fun TarjetaActividad(
                 )
             }
 
+            // Fechas de la actividad
+            Text(
+                text = "${actividad.fechaInicio} - ${actividad.fechaFin}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+
             Spacer(modifier = Modifier.height(6.dp))
 
             // Indicador de Progreso Límite
@@ -106,7 +113,7 @@ private fun textoDiasRestantes(dias: Int): String = when {
 }
 
 // -----------------------------------------------------------
-// PREVIEWS PARTE 4 (Casos límite, fuentes y anchos)
+// PREVIEWS
 // -----------------------------------------------------------
 
 @Preview(name = "Normal", showBackground = true)
@@ -115,9 +122,11 @@ fun TarjetaActividadNormalPreview() {
     MaterialTheme {
         TarjetaActividad(
             actividad = ActividadFormativa(
-                id = 1,
+                id = 1L,
                 titulo = "Guía 3 Jetpack Compose",
                 descripcion = "Desarrollo de interfaz declarativa",
+                fechaInicio = LocalDate.now(),
+                fechaFin = LocalDate.now().plusDays(7),
                 progreso = 50,
                 diasRestantes = 3,
                 prioridad = Prioridad.ALTA
@@ -133,9 +142,11 @@ fun TarjetaActividadLargaPreview() {
     MaterialTheme {
         TarjetaActividad(
             actividad = ActividadFormativa(
-                id = 2,
+                id = 2L,
                 titulo = "Construcción de componentes muy complejos para la interfaz adaptable de la aplicación móvil de formación SENA CTMA",
                 descripcion = "Esta descripción es bastante extensa para verificar que el componente se ajuste bien sin desbordar la pantalla ni recortar texto inadecuadamente.",
+                fechaInicio = LocalDate.now().minusDays(5),
+                fechaFin = LocalDate.now(),
                 progreso = 100,
                 diasRestantes = 0,
                 prioridad = Prioridad.MEDIA
@@ -151,9 +162,11 @@ fun TarjetaActividadFuenteGrandePreview() {
     MaterialTheme {
         TarjetaActividad(
             actividad = ActividadFormativa(
-                id = 3,
+                id = 3L,
                 titulo = "Prueba de Fuente Accesible",
                 descripcion = "Verificación con escalado de letra al 150%",
+                fechaInicio = LocalDate.now(),
+                fechaFin = LocalDate.now().plusDays(10),
                 progreso = 0,
                 diasRestantes = -2,
                 prioridad = Prioridad.ALTA
