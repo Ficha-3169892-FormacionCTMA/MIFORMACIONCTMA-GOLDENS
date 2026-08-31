@@ -87,17 +87,16 @@ Publicar actividades, establecer fechas de entrega y realizar seguimiento al ava
 
 # Estado del proyecto
 
-🚧 Proyecto en desarrollo - Semana 1
+🚧 Proyecto en desarrollo - Semana 3
 
 Actualmente la aplicación cuenta con:
 
 - Configuración del entorno Android.
 - Proyecto creado con Jetpack Compose.
-- Pantalla inicial.
-- Repositorio Git.
-- Documentación inicial del proyecto.
-
-Las siguientes semanas incorporarán nuevas funcionalidades como gestión de actividades, almacenamiento de datos y navegación entre pantallas.
+- Pantalla inicial adaptable.
+- Persistencia en memoria (simulada).
+- Arquitectura de paquetes organizada (ui/components, ui/screens, ui/theme).
+- Documentación del proyecto actualizada.
 
 # Semana 2
 
@@ -110,3 +109,22 @@ Las siguientes semanas incorporarán nuevas funcionalidades como gestión de act
 - Se implementó la búsqueda de actividades.
 - Se calcula el promedio de progreso.
 - Se muestran datos calculados en la pantalla inicial.
+
+# Semana 3
+
+## Cambios realizados
+
+### 1. Interfaz de Usuario con Material 3
+- **Tema y Estilos:** Centralización de colores, tipografías y formas en el paquete `ui/theme`.
+- **Uso de Material 3:** Implementación de `ColorScheme`, `Typography` y `Shapes` para evitar valores arbitrarios en el código.
+
+### 2. Componentes Reutilizables
+- **EncabezadoFormacion:** Componente parametrizado que muestra el saludo al aprendiz y un resumen del estado de sus actividades. Incluye previsualizaciones para diferentes escalas de fuente y anchos de pantalla.
+- **TarjetaActividad:** Componente sin estado (stateless) para mostrar detalles de una actividad (título, fecha, progreso y estado textual).
+- **Accesibilidad:** Uso de `contentDescription` y modificadores semánticos para mejorar la experiencia con lectores de pantalla.
+
+### 3. Pantalla Principal y Layout Adaptable
+- **PantallaActividades:** Implementación de la estructura base usando `Scaffold` con un Floating Action Button.
+- **Diseño Adaptable:** Uso de `BoxWithConstraints` para alternar entre una `LazyColumn` (pantallas compactas < 600dp) y una `LazyVerticalGrid` de 2 columnas (pantallas amplias >= 600dp).
+- **Gestión de Estados:** Manejo visual de la lista vacía de actividades.
+- **Optimización de Listas:** Uso de claves estables (`key`) en las colecciones para mejorar el rendimiento.
