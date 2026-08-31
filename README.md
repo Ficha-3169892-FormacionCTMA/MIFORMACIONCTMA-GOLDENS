@@ -79,34 +79,41 @@ Publicar actividades, establecer fechas de entrega y realizar seguimiento al ava
 - Android Studio
 - Jetpack Compose
 - Material Design 3
-- Gradle
-- Git
-- GitHub
+- Navigation Compose
+- ViewModel & LiveData/State
+- Retrofit & OkHttp (Networking)
+- MockWebServer (API Testing)
+- Espresso & Compose Test (UI Testing)
+- Gradle (Kotlin DSL)
+- Git & GitHub
 
 ---
 
-# Estado del proyecto
+# Evolución del Proyecto
 
-🚧 Proyecto en desarrollo - Semana 1
+## Semana 1: Configuración Inicial
+- Configuración del entorno Android y Jetpack Compose.
+- Pantalla inicial básica y repositorio Git.
 
-Actualmente la aplicación cuenta con:
+## Semana 2: Modelo de Datos y Reglas
+- Implementación del modelo `ActividadFormativa` y enum `Prioridad`.
+- Desarrollo de reglas de negocio (búsqueda, validación básica, promedios).
 
-- Configuración del entorno Android.
-- Proyecto creado con Jetpack Compose.
-- Pantalla inicial.
-- Repositorio Git.
-- Documentación inicial del proyecto.
+## Semana 3: Interfaz de Usuario (UI)
+- Diseño de tarjetas (`ActividadCard`) y listas dinámicas.
+- Aplicación de Material Design 3 y principios de accesibilidad.
 
-Las siguientes semanas incorporarán nuevas funcionalidades como gestión de actividades, almacenamiento de datos y navegación entre pantallas.
+## Semana 4: Estado, Navegación y Pruebas HTTP
+- **Arquitectura UDF (Unidirectional Data Flow)**: Implementación de `ViewModel`, `UiState` y eventos.
+- **Navegación**: Integración de `Navigation Compose` (Lista, Formulario, Detalle, Login).
+- **Formularios con Validación**: Título, descripción, progreso y validación lógica de fechas.
+- **Networking & Monitoreo**: 
+    - Configuración de `Retrofit` y `OkHttp` con interceptores para inspección de tráfico en Logcat.
+    - Inyección automática de Tokens Bearer para seguridad.
+- **Pruebas Unitarias (API)**: Validación de contratos y códigos de estado (403 Forbidden, 422 Unprocessable Content) usando `MockWebServer`.
+- **Pruebas de UI (Seguridad)**: Verificación automatizada con Espresso/Compose para el bloqueo de interfaz ante errores de autorización (403).
 
-# Semana 2
+---
 
-## Cambios realizados
-
-- Se creó el paquete model.
-- Se implementó la clase ActividadFormativa.
-- Se creó el enum Prioridad.
-- Se desarrollaron las reglas de negocio.
-- Se implementó la búsqueda de actividades.
-- Se calcula el promedio de progreso.
-- Se muestran datos calculados en la pantalla inicial.
+# Estado actual
+✅ **Semana 4 completada.** La aplicación es funcional, segura y cuenta con una arquitectura robusta de pruebas y monitoreo de red.
