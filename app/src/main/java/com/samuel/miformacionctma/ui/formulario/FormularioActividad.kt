@@ -35,74 +35,65 @@ fun FormularioActividad(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Campo Título
+        Text(
+            text = "Nueva Actividad",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
         OutlinedTextField(
             value = uiState.titulo,
             onValueChange = { onEvento(FormularioActividadEvento.TituloCambiado(it)) },
-            label = { Text("Título de la Actividad") },
+            label = { Text("Título (3-80 chars)") },
             isError = uiState.tituloError != null,
+            supportingText = { uiState.tituloError?.let { Text(it) } },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        uiState.tituloError?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error)
-        }
 
-        // Campo Descripción
         OutlinedTextField(
             value = uiState.descripcion,
             onValueChange = { onEvento(FormularioActividadEvento.DescripcionCambiada(it)) },
-            label = { Text("Descripción (opcional)") },
+            label = { Text("Descripción (opcional, max 240)") },
             isError = uiState.descripcionError != null,
+            supportingText = { uiState.descripcionError?.let { Text(it) } },
             modifier = Modifier.fillMaxWidth(),
-            maxLines = 4
+            maxLines = 3
         )
-        uiState.descripcionError?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error)
-        }
 
-        // Campo Fecha Inicio
         OutlinedTextField(
             value = uiState.fechaInicio,
             onValueChange = { onEvento(FormularioActividadEvento.FechaInicioCambiada(it)) },
-            label = { Text("Fecha Inicio (YYYY-MM-DD)") },
+            label = { Text("Fecha Inicio (yyyy-mm-dd)") },
             isError = uiState.fechasError != null,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        // Campo Fecha Fin
         OutlinedTextField(
             value = uiState.fechaFin,
             onValueChange = { onEvento(FormularioActividadEvento.FechaFinCambiada(it)) },
-            label = { Text("Fecha Fin (YYYY-MM-DD)") },
+            label = { Text("Fecha Fin (yyyy-mm-dd)") },
             isError = uiState.fechasError != null,
+            supportingText = { uiState.fechasError?.let { Text(it) } },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        uiState.fechasError?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error)
-        }
 
-        // Campo Progreso
         OutlinedTextField(
             value = uiState.progreso,
             onValueChange = { input ->
-                // Filtramos caracteres no numéricos en tiempo de edición
                 val filtrado = input.filter { it.isDigit() }
                 onEvento(FormularioActividadEvento.ProgresoCambiado(filtrado))
             },
-            label = { Text("Progreso (%)") },
+            label = { Text("Progreso (0-100%)") },
             isError = uiState.progresoError != null,
+            supportingText = { uiState.progresoError?.let { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        uiState.progresoError?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error)
-        }
 
-        // Acciones
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)
@@ -119,10 +110,7 @@ fun FormularioActividad(
                 onClick = { onEvento(FormularioActividadEvento.Guardar) }
             ) {
                 if (guardando) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Guardar")
                 }

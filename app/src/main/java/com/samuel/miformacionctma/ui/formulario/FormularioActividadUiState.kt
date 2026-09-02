@@ -38,13 +38,15 @@ data class FormularioActividadUiState(
         get() = try {
             val inicio = LocalDate.parse(fechaInicio)
             val fin = LocalDate.parse(fechaFin)
-            if (fin.isBefore(inicio)) {
-                "La fecha de fin no puede ser anterior a la fecha de inicio."
-            } else {
-                null
+            val hoy = LocalDate.now()
+            
+            when {
+                inicio.isBefore(hoy) -> "La fecha de inicio no puede ser anterior a hoy."
+                fin.isBefore(inicio) -> "La fecha de fin no puede ser anterior a la de inicio."
+                else -> null
             }
         } catch (_: Exception) {
-            "Usa el formato yyyy-MM-dd en ambas fechas."
+            "Formato inválido (yyyy-MM-dd)."
         }
 
     val esValido: Boolean

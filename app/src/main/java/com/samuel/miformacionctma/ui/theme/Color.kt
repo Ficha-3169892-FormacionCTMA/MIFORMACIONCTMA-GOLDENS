@@ -2,6 +2,13 @@ package com.samuel.miformacionctma.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val SenaGreen = Color(0xFF39A900)
+val SenaOrange = Color(0xFFFF6B00)
+val SenaBlue = Color(0xFF00324D)
+
+val LightGreen = Color(0xFFE8F5E9)
+val DarkGreen = Color(0xFF1B5E20)
+
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)

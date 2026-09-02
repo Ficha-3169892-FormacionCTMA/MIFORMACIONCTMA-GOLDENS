@@ -10,6 +10,6 @@ interface ApiService {
     @GET("notas/{aprendizId}")
     suspend fun obtenerNotasAprendiz(@Path("aprendizId") aprendizId: String): Response<Unit>
 
-    @POST("bitacora")
+    @POST("bitacora/subir")
     suspend fun subirBitacora(@Body fileData: String): Response<Unit>
 }

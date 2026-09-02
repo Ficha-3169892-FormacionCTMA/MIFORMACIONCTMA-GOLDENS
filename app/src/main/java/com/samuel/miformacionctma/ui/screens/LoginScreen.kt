@@ -1,37 +1,52 @@
 package com.samuel.miformacionctma.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.samuel.miformacionctma.ui.AppViewModel
 
 @Composable
-fun LoginScreen(
-    onLoginSuccess: () -> Unit
-) {
-    var documento by remember { mutableStateOf("") }
+fun LoginScreen(viewModel: AppViewModel) {
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var errorStatus by remember { mutableStateOf<String?>(null) }
+    var role by remember { mutableStateOf("LEARNER") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Iniciar Sesión", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "Mi Formación CTMA",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF39A900)
+        )
+        Text(
+            text = "Centro de Tecnología de la Manufactura",
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        
+        Spacer(modifier = Modifier.height(48.dp))
 
         OutlinedTextField(
-            value = documento,
-            onValueChange = { documento = it },
-            label = { Text("Documento") },
-            modifier = Modifier.fillMaxWidth().testTag("et_documento")
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Correo SENA") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -40,32 +55,34 @@ fun LoginScreen(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
+            modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth().testTag("et_password")
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                if (documento == "1001" && password == "Sena2026*") {
-                    onLoginSuccess()
-                } else {
-                    errorStatus = "Credenciales incorrectas"
-                }
-            },
-            modifier = Modifier.fillMaxWidth().testTag("btn_login")
-        ) {
-            Text("Entrar")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = role == "LEARNER", onClick = { role = "LEARNER" })
+            Text("Aprendiz")
+            Spacer(modifier = Modifier.width(16.dp))
+            RadioButton(selected = role == "INSTRUCTOR", onClick = { role = "INSTRUCTOR" })
+            Text("Instructor")
         }
 
-        errorStatus?.let {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.testTag("tv_error_status")
-            )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = { 
+                if (email.isNotBlank() && password.length >= 6) {
+                    viewModel.login(email, role, email.split("@")[0])
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF39A900)),
+            enabled = email.isNotBlank() && password.length >= 6
+        ) {
+            Text("INGRESAR")
         }
     }
 }

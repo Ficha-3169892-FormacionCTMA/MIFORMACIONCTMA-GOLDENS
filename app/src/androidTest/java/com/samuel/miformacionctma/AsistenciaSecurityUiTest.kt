@@ -1,10 +1,11 @@
 package com.samuel.miformacionctma
 
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.*
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.*
-import androidx.test.ext.junit.rules.ActivityScenarioRule
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -14,26 +15,22 @@ import org.junit.runner.RunWith
 class AsistenciaSecurityUiTest {
 
     @get:Rule
-    val activityRule = ActivityScenarioRule(MainActivity::class.java)
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun verificarBloqueoUIAlRecibirError403DeAutorizacion() {
-        // Nota: Estos IDs deben estar vinculados a la UI (Compose o XML)
-        // En Compose se pueden vincular usando Modifier.semantics { testTag = "..." } 
-        // o mediante resourceId en vistas tradicionales.
-        
         // 1. Ingresar credenciales del Aprendiz A
-        onView(withId(R.id.et_documento)).perform(typeText("1001"), closeSoftKeyboard())
-        onView(withId(R.id.et_password)).perform(typeText("Sena2026*"), closeSoftKeyboard())
-        onView(withId(R.id.btn_login)).perform(click())
+        composeTestRule.onNodeWithTag("et_documento").performTextInput("1001")
+        composeTestRule.onNodeWithTag("et_password").performTextInput("Sena2026*")
+        composeTestRule.onNodeWithTag("btn_login").performClick()
 
         // 2. Intentar consultar la ficha/asistencia del Aprendiz B (1002)
-        onView(withId(R.id.et_buscar_aprendiz)).perform(typeText("1002"), closeSoftKeyboard())
-        onView(withId(R.id.btn_consultar)).perform(click())
+        composeTestRule.onNodeWithTag("et_buscar_aprendiz").performTextInput("1002")
+        composeTestRule.onNodeWithTag("btn_consultar").performClick()
 
-        // 3. Asercion de Interfaz: Confirmar que la app despliega el mensaje de acceso denegado
-        onView(withId(R.id.tv_error_status))
-            .check(matches(isDisplayed()))
-            .check(matches(withText("Acceso Denegado (403): No tiene permisos para consultar este registro")))
+        // 3. Aserción de Interfaz: Confirmar que la app despliega el mensaje de acceso denegado
+        composeTestRule.onNodeWithTag("tv_error_status")
+            .assertIsDisplayed()
+            .assertTextEquals("Acceso Denegado (403): No tiene permisos para consultar este registro")
     }
 }

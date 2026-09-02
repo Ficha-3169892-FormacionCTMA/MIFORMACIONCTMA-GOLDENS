@@ -15,81 +15,81 @@ Actualmente los aprendices administran sus actividades, enlaces, evidencias y fe
 # Usuarios
 
 ## 1. Aprendiz
-
-**Necesidad:**
-Consultar actividades, registrar evidencias y hacer seguimiento a su progreso académico.
+**Necesidad:** Consultar actividades, registrar evidencias, bitácoras y hacer seguimiento a su progreso académico.
 
 ## 2. Instructor
-
-**Necesidad:**
-Publicar actividades, establecer fechas de entrega y realizar seguimiento al avance de los aprendices.
+**Necesidad:** Publicar actividades, establecer fechas de entrega y realizar seguimiento al avance de los aprendices.
 
 ---
 
-# Historias de Usuario
+# Historias de Usuario (Product Backlog)
 
-## Historia 1
-**Como** aprendiz, **quiero** consultar mis actividades pendientes, **para** organizar mejor mi tiempo y cumplir con las fechas establecidas.
+### HU-01 - Visualización y Estado de Actividades (Mejorada)
+**Como** aprendiz, **quiero** consultar mis actividades pendientes con estados claros (Pendiente, En Proceso, Completada), **para** organizar mejor mi tiempo y cumplir con las fechas establecidas.
+- **CA-01.1:** Lista con colores según prioridad y estado.
+- **CA-01.2:** Indicador visual de días restantes.
 
-## Historia 2
-**Como** instructor, **quiero** publicar nuevas actividades, **para** que los aprendices puedan consultarlas desde la aplicación.
+### HU-02 - Creación de Actividades (Mejorada)
+**Como** instructor, **quiero** publicar nuevas actividades con fechas de inicio/fin y prioridad, **para** que los aprendices puedan consultarlas desde la aplicación.
+- **CA-02.1:** Validación de fecha fin posterior a inicio.
+- **CA-02.2:** Selección de prioridad (Alta, Media, Baja).
 
-## Historia 3
+### HU-03 - Entrega de Evidencias Digitales (Mejorada)
 **Como** aprendiz, **quiero** registrar las evidencias de las actividades realizadas, **para** llevar un control de mi progreso durante la formación.
+- **CA-03.1:** El aprendiz puede marcar una actividad como completada al subir el link.
+- **CA-03.2:** Validación de formato URL para la evidencia.
+
+### HU-04 - Registro de Bitácora Diaria
+**Como** aprendiz, **quiero** registrar mis tareas diarias y horas dedicadas, **para** cumplir con el seguimiento de mi etapa productiva.
+- **CA-04.1:** Registro de fecha, descripción y horas.
+- **CA-04.2:** Validación de horas mayores a cero.
+
+### HU-05 - Control de Asistencia QR
+**Como** aprendiz, **quiero** registrar mi asistencia escaneando un código QR, **para** agilizar el proceso de control en el ambiente de formación.
+- **CA-05.1:** Escaneo de código QR generado por el instructor.
+
+### HU-06 - Autenticación y Perfil SENA
+**Como** usuario, **quiero** iniciar sesión con mis credenciales institucionales, **para** acceder a mi información de forma segura.
+
+### HU-07 - Dashboard de Progreso
+**Como** aprendiz, **quiero** ver un resumen gráfico de mi avance académico, **para** visualizar mis competencias alcanzadas.
+
+### HU-08 - Notificaciones Push de Vencimiento
+**Como** aprendiz, **quiero** recibir alertas sobre entregas próximas a vencer, **para** no olvidar mis compromisos.
+
+### HU-09 - Filtros y Búsqueda Avanzada
+**Como** aprendiz, **quiero** buscar actividades por competencia o estado, **para** encontrar información rápidamente.
+
+### HU-10 - Modo Offline (Sincronización)
+**Como** aprendiz, **quiero** registrar datos sin conexión a internet, **para** que se sincronicen automáticamente al recuperar el acceso.
+
+### HU-11 - Gestión de Retroalimentación
+**Como** aprendiz, **quiero** ver los comentarios del instructor sobre mis evidencias, **para** mejorar mi proceso de aprendizaje.
+
+### HU-12 - Calendario Formativo
+**Como** aprendiz, **quiero** ver mis actividades en una vista de calendario, **para** visualizar mi carga académica mensual.
+
+### HU-13 - Descarga de Certificados
+**Como** aprendiz, **quiero** descargar mis certificados de asistencia y notas, **para** utilizarlos en trámites administrativos.
+
+### HU-14 - Reporte de Novedades e Inasistencias
+**Como** aprendiz, **quiero** reportar excusas médicas o permisos, **para** justificar mis inasistencias de forma oficial.
+
+### HU-15 - Preferencias y Accesibilidad
+**Como** usuario, **quiero** ajustar el tema (oscuro/claro) y el tamaño de fuente, **para** mejorar mi experiencia de uso.
 
 ---
 
 # Tecnologías utilizadas
 
-- Kotlin & Coroutines
-- Jetpack Compose (Material 3)
-- Navigation Compose
-- Architecture Components (ViewModel, StateFlow)
-- Retrofit 2 & OkHttp 3 (Networking)
-- MockWebServer (Test API mocking)
-- Espresso (UI Testing)
-- JUnit 4
+- Kotlin, Jetpack Compose, Clean Architecture, MVVM, UDF, Retrofit, OkHttp, MockWebServer, Espresso.
 
 ---
 
-# Estado del proyecto
+# Evolución del Proyecto
 
-✅ Proyecto en desarrollo - Semana 4 (Networking & Seguridad)
-
----
-
-# Registro de Incrementos
-
-## Semana 2 - Fundamentos
-- Estructura base de paquetes (`model`, `ui`).
-- Implementación de lógica de negocio inicial y modelo `ActividadFormativa`.
-
-## Semana 3 - Calidad y Accesibilidad
-- Diseño de matriz de trazabilidad y casos de prueba.
-- Implementación de `TarjetaActividad` con soporte para accesibilidad (TalkBack).
-
-## Semana 4 (Parte A) - Estado y Navegación
-- **UDF (Unidirectional Data Flow):** Separación de UI State y Eventos.
-- **Navigation:** Implementación de rutas Lista -> Formulario -> Detalle.
-- **Formulario:** Validaciones síncronas de fechas, progreso y campos obligatorios.
-
-## Semana 4 (Parte B) - Networking, Monitoreo y Pruebas HTTP
-En esta fase se integraron componentes de red profesionales y se robusteció el pipeline de pruebas.
-
-### 📶 Monitoreo HTTP (ApiClient)
-- **DevTools Network en Android:** Se implementó `HttpLoggingInterceptor` para inspeccionar peticiones, encabezados y payloads directamente en el Logcat.
-- **Seguridad:** Interceptor de red para adjuntar automáticamente el Token Bearer desde el `SessionManager`.
-- **Retrofit:** Configuración centralizada para la API de Staging.
-
-### 🧪 Estrategia de Pruebas (8 Test Pass)
-Se implementaron pruebas en tres niveles de la pirámide de automatización:
-1. **Pruebas Unitarias de Negocio (`ActividadPruebasTest`):** Validación de reglas de estado basadas en el progreso.
-2. **Pruebas de Servicios API (`BitacoraApiTest`):**
-   - Uso de **MockWebServer** para simular fallos de servidor.
-   - Verificación de manejo de errores HTTP 403 (Forbidden) y 422 (Unprocessable Content).
-3. **Pruebas de Interfaz (`AsistenciaSecurityUiTest`):**
-   - Automatización con **Espresso** en emulador.
-   - Verificación de feedback visual (Mensajes de error en UI) ante bloqueos de seguridad.
-
----
-*Ultima verificación de compilación: Exitosa (8 unit tests passed)*
+## Semana 5: Implementación Integral (Clean Architecture & UDF)
+- **Agile Coaching:** Definición y estructuración de 15 Historias de Usuario con estándares profesionales.
+- **Testing Estratégico:** Implementación de pruebas unitarias y de UI automatizadas para el flujo de Bitácora y Actividades.
+- **Documentación Técnica:** Creación de registros de Riesgos y Plan de Pruebas centralizado.
+- **Arquitectura Robusta:** Refactorización a Clean Architecture con manejo de estado unidireccional (UDF).
