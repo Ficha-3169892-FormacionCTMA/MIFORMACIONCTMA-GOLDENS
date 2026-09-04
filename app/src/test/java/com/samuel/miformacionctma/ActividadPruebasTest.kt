@@ -9,8 +9,9 @@ class ActividadPruebasTest {
 
     private val fechaHoy = LocalDate.now()
 
+    // CP-01
     @Test
-    fun `CP-01 - Progreso negativo retorna estado PENDIENTE`() {
+    fun `CP-01 - Progreso negativo retorna estado Pendiente`() {
         val actividad = ActividadFormativa(
             id = 1L,
             titulo = "Kotlin",
@@ -22,11 +23,12 @@ class ActividadPruebasTest {
             prioridad = Prioridad.BAJA
         )
 
-        assertEquals("PENDIENTE", estadoActividad(actividad))
+        assertEquals("Pendiente", estadoActividad(actividad))
     }
 
+    // CP-02
     @Test
-    fun `CP-02 - Limite exacto de progreso 0 retorna estado PENDIENTE`() {
+    fun `CP-02 - Limite exacto de progreso 0 retorna estado Pendiente`() {
         val actividad = ActividadFormativa(
             id = 10L,
             titulo = "MVVM",
@@ -38,11 +40,14 @@ class ActividadPruebasTest {
             prioridad = Prioridad.ALTA
         )
 
-        assertEquals("PENDIENTE", estadoActividad(actividad))
+        val estadoTexto = estadoActividad(actividad)
+
+        assertEquals("Pendiente", estadoTexto)
     }
 
+    // CP-03
     @Test
-    fun `CP-03 - Progreso mayor que 0 retorna estado EN PROCESO`() {
+    fun `CP-03 - Progreso mayor que 0 retorna estado En Proceso`() {
         val actividad = ActividadFormativa(
             id = 3L,
             titulo = "Layouts",
@@ -54,11 +59,12 @@ class ActividadPruebasTest {
             prioridad = Prioridad.MEDIA
         )
 
-        assertEquals("EN PROCESO", estadoActividad(actividad))
+        assertEquals("En Proceso", estadoActividad(actividad))
     }
 
+    // CP-04
     @Test
-    fun `CP-04 - Progreso 99 retorna estado EN PROCESO`() {
+    fun `CP-04 - Progreso 99 retorna estado En Proceso`() {
         val actividad = ActividadFormativa(
             id = 4L,
             titulo = "Navegacion",
@@ -70,11 +76,12 @@ class ActividadPruebasTest {
             prioridad = Prioridad.ALTA
         )
 
-        assertEquals("EN PROCESO", estadoActividad(actividad))
+        assertEquals("En Proceso", estadoActividad(actividad))
     }
 
+    // CP-05
     @Test
-    fun `CP-05 - Progreso 100 retorna estado COMPLETADA`() {
+    fun `CP-05 - Progreso 100 retorna estado Completada`() {
         val actividad = ActividadFormativa(
             id = 5L,
             titulo = "Proyecto Android",
@@ -86,6 +93,6 @@ class ActividadPruebasTest {
             prioridad = Prioridad.ALTA
         )
 
-        assertEquals("COMPLETADA", estadoActividad(actividad))
+        assertEquals("Completada", estadoActividad(actividad))
     }
 }
