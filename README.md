@@ -1,130 +1,41 @@
-# Mi Formación CTMA
+# Mi Formación CTMA - Semana 7: Concurrencia y Estado Reactivo
 
-## Descripción del proyecto
+## 🏗️ Arquitectura de Datos Reactiva
 
-Mi Formación CTMA es una aplicación móvil desarrollada para Android con Kotlin y Jetpack Compose. Su propósito es ayudar a los aprendices del SENA a organizar actividades, compromisos y evidencias de su proceso formativo en un solo lugar. La aplicación permitirá llevar un mejor control de las tareas asignadas, consultar fechas importantes y facilitar el seguimiento del avance académico de manera sencilla y organizada.
+La aplicación implementa un flujo de datos unidireccional (UDF) y reactivo siguiendo este esquema:
 
----
+**Room (DB) / DataStore (Prefs)**  
+⬇️  
+**Repository** (Transforma Entidades -> Modelos de Dominio)  
+⬇️  
+**ViewModel** (Combina Flows con `combine` y `flatMapLatest`)  
+⬇️  
+**Compose UI** (Recolecta con `collectAsStateWithLifecycle`)
 
-# Problema
-
-Actualmente los aprendices administran sus actividades, enlaces, evidencias y fechas en diferentes plataformas, lo que genera desorganización, pérdida de información y dificultad para hacer seguimiento a su proceso de formación. Mi Formación CTMA busca centralizar esta información en una sola aplicación móvil para mejorar la organización, la productividad y la trazabilidad del aprendizaje.
-
----
-
-# Usuarios
-
-## 1. Aprendiz
-
-**Necesidad:**
-Consultar actividades, registrar evidencias y hacer seguimiento a su progreso académico.
-
-## 2. Instructor
-
-**Necesidad:**
-Publicar actividades, establecer fechas de entrega y realizar seguimiento al avance de los aprendices.
+### ⚡ Decisión de Dispatchers
+- **Dispatchers.Main:** Utilizado en el ViewModel para la recolección de estados y actualización de la UI.
+- **Dispatchers.IO:** Utilizado exclusivamente en el `AppRepository` mediante `withContext(Dispatchers.IO)` para todas las operaciones de persistencia (Room y DataStore), garantizando que las funciones sean **main-safe**.
 
 ---
 
-# Historias de Usuario
+## ✅ Casos de Aceptación (Semana 7)
 
-## Historia 1
-
-**Como** aprendiz,
-
-**quiero** consultar mis actividades pendientes,
-
-**para** organizar mejor mi tiempo y cumplir con las fechas establecidas.
-
-### Criterio de aceptación
-
-- La aplicación debe mostrar una lista con las actividades registradas.
-- El aprendiz puede visualizar el nombre y la fecha de cada actividad.
+| ID | Caso de Prueba | Resultado |
+|:---|:---|:---:|
+| **CA-01** | Abrir app sin datos previos | **PASÓ** (Muestra Cargando -> Estado Vacío) |
+| **CA-02** | Insertar actividad nueva | **PASÓ** (Room emite flujo y UI se actualiza reactivamente) |
+| **CA-03** | Cambio de filtro de prioridad | **PASÓ** (DataStore persiste y `combine` recalcula el flujo) |
+| **CA-04** | Búsquedas rápidas (Debounce/Cancel) | **PASÓ** (Se cancela consulta previa, prevalece última búsqueda) |
+| **CA-05** | Error forzado en Repository | **PASÓ** (Captura excepción, muestra ErrorUiState con Reintentar) |
+| **CA-06** | Cancelación por ciclo de vida | **PASÓ** (El Job se cancela automáticamente al cerrar el ViewModel) |
+| **CA-07** | Rotación de pantalla | **PASÓ** (StateFlow conserva estado, no se repiten inserciones) |
+| **CA-08** | Suite de pruebas (RunTest) | **PASÓ** (Ejecución asíncrona validada sin Thread.sleep) |
 
 ---
 
-## Historia 2
-
-**Como** instructor,
-
-**quiero** publicar nuevas actividades,
-
-**para** que los aprendices puedan consultarlas desde la aplicación.
-
-### Criterio de aceptación
-
-- El instructor puede crear una nueva actividad.
-- La actividad debe quedar disponible para ser consultada por los aprendices.
-
----
-
-## Historia 3
-
-**Como** aprendiz,
-
-**quiero** registrar las evidencias de las actividades realizadas,
-
-**para** llevar un control de mi progreso durante la formación.
-
-### Criterio de aceptación
-
-- El aprendiz puede marcar una actividad como completada.
-- La aplicación debe reflejar el cambio de estado de la actividad.
-
----
-
-# Tecnologías utilizadas
-
-- Kotlin
-- Android Studio
-- Jetpack Compose
-- Material Design 3
-- Gradle
-- Git
-- GitHub
-
----
-
-# Estado del proyecto
-
-🚧 Proyecto en desarrollo - Semana 3
-
-Actualmente la aplicación cuenta con:
-
-- Configuración del entorno Android.
-- Proyecto creado con Jetpack Compose.
-- Pantalla inicial adaptable.
-- Persistencia en memoria (simulada).
-- Arquitectura de paquetes organizada (ui/components, ui/screens, ui/theme).
-- Documentación del proyecto actualizada.
-
-# Semana 2
-
-## Cambios realizados
-
-- Se creó el paquete model.
-- Se implementó la clase ActividadFormativa.
-- Se creó el enum Prioridad.
-- Se desarrollaron las reglas de negocio.
-- Se implementó la búsqueda de actividades.
-- Se calcula el promedio de progreso.
-- Se muestran datos calculados en la pantalla inicial.
-
-# Semana 3
-
-## Cambios realizados
-
-### 1. Interfaz de Usuario con Material 3
-- **Tema y Estilos:** Centralización de colores, tipografías y formas en el paquete `ui/theme`.
-- **Uso de Material 3:** Implementación de `ColorScheme`, `Typography` y `Shapes` para evitar valores arbitrarios en el código.
-
-### 2. Componentes Reutilizables
-- **EncabezadoFormacion:** Componente parametrizado que muestra el saludo al aprendiz y un resumen del estado de sus actividades. Incluye previsualizaciones para diferentes escalas de fuente y anchos de pantalla.
-- **TarjetaActividad:** Componente sin estado (stateless) para mostrar detalles de una actividad (título, fecha, progreso y estado textual).
-- **Accesibilidad:** Uso de `contentDescription` y modificadores semánticos para mejorar la experiencia con lectores de pantalla.
-
-### 3. Pantalla Principal y Layout Adaptable
-- **PantallaActividades:** Implementación de la estructura base usando `Scaffold` con un Floating Action Button.
-- **Diseño Adaptable:** Uso de `BoxWithConstraints` para alternar entre una `LazyColumn` (pantallas compactas < 600dp) y una `LazyVerticalGrid` de 2 columnas (pantallas amplias >= 600dp).
-- **Gestión de Estados:** Manejo visual de la lista vacía de actividades.
-- **Optimización de Listas:** Uso de claves estables (`key`) en las colecciones para mejorar el rendimiento.
+## 🛠️ Tecnologías Implementadas
+- **Kotlin Coroutines:** Manejo de asincronía y main-safety.
+- **Flow / StateFlow:** Flujos de datos reactivos y conservación de estado.
+- **DataStore:** Persistencia de preferencias de usuario reactiva.
+- **Room + Flow:** Consultas a base de datos que notifican cambios automáticamente.
+- **Lifecycle Runtime Compose:** Recolección de flujo optimizada para Compose.
