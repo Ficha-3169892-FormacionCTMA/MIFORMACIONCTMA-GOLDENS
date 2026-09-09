@@ -20,6 +20,7 @@ import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.ui.components.EncabezadoFormacion
 import com.samuel.miformacionctma.ui.components.TarjetaActividad
 import com.samuel.miformacionctma.ui.theme.MiFormacionCTMATheme
+import java.time.LocalDate
 
 @Composable
 fun PantallaActividades(
@@ -65,9 +66,8 @@ fun ContenidoAdaptable(
     onActividadClick: (ActividadFormativa) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val anchoMaximo = maxWidth
-        
-        if (anchoMaximo < 600.dp) {
+        // Usamos this.maxWidth para asegurar que el scope se considere utilizado
+        if (this.maxWidth < 600.dp) {
             // Vista compacta: Lista simple
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -165,15 +165,17 @@ fun PantallaActividadesVaciaPreview() {
     }
 }
 
+private val hoy = LocalDate.now()
+
 val actividadesSimuladas = listOf(
-    ActividadFormativa(1L, "Introducción a Kotlin", "Fundamentos", 100, 0, Prioridad.ALTA),
-    ActividadFormativa(2L, "Jetpack Compose Basics", "Layouts", 50, 2, Prioridad.MEDIA),
-    ActividadFormativa(3L, "Material 3 Design", "Temas y Colores", 80, 1, Prioridad.ALTA),
-    ActividadFormativa(4L, "Navegación", "Setup de NavHost", 0, 5, Prioridad.BAJA),
-    ActividadFormativa(5L, "Persistencia con Room", "Bases de datos", 10, 10, Prioridad.MEDIA),
-    ActividadFormativa(6L, "Retrofit y API", "Networking", 0, 15, Prioridad.ALTA),
-    ActividadFormativa(7L, "ViewModel y LiveData", "State management", 0, 20, Prioridad.MEDIA),
-    ActividadFormativa(8L, "Unit Testing", "JUnit", 0, 30, Prioridad.BAJA),
-    ActividadFormativa(9L, "UI Testing", "Espresso", 0, 35, Prioridad.BAJA),
-    ActividadFormativa(10L, "Dagger Hilt", "Dependency Injection", 0, 40, Prioridad.ALTA)
+    ActividadFormativa(1L, "Introducción a Kotlin", "Fundamentos", hoy, hoy.plusDays(7), 100, 0, Prioridad.ALTA),
+    ActividadFormativa(2L, "Jetpack Compose Basics", "Layouts", hoy, hoy.plusDays(7), 50, 2, Prioridad.MEDIA),
+    ActividadFormativa(3L, "Material 3 Design", "Temas y Colores", hoy, hoy.plusDays(7), 80, 1, Prioridad.ALTA),
+    ActividadFormativa(4L, "Navegación", "Setup de NavHost", hoy, hoy.plusDays(7), 0, 5, Prioridad.BAJA),
+    ActividadFormativa(5L, "Persistencia con Room", "Bases de datos", hoy, hoy.plusDays(7), 10, 10, Prioridad.MEDIA),
+    ActividadFormativa(6L, "Retrofit y API", "Networking", hoy, hoy.plusDays(7), 0, 15, Prioridad.ALTA),
+    ActividadFormativa(7L, "ViewModel y LiveData", "State management", hoy, hoy.plusDays(7), 0, 20, Prioridad.MEDIA),
+    ActividadFormativa(8L, "Unit Testing", "JUnit", hoy, hoy.plusDays(7), 0, 30, Prioridad.BAJA),
+    ActividadFormativa(9L, "UI Testing", "Espresso", hoy, hoy.plusDays(7), 0, 35, Prioridad.BAJA),
+    ActividadFormativa(10L, "Dagger Hilt", "Dependency Injection", hoy, hoy.plusDays(7), 0, 40, Prioridad.ALTA)
 )

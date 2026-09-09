@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.ui.theme.MiFormacionCTMATheme
+import java.time.LocalDate
 
 @Composable
 fun TarjetaActividad(
@@ -108,7 +109,16 @@ fun TarjetaActividad(
 fun PreviewTarjetaNormal() {
     MiFormacionCTMATheme {
         TarjetaActividad(
-            actividad = ActividadFormativa(1, "Taller de Kotlin", "Contenido básico", 45, 3, Prioridad.MEDIA),
+            actividad = ActividadFormativa(
+                id = 1L,
+                titulo = "Taller de Kotlin",
+                descripcion = "Contenido básico",
+                fechaInicio = LocalDate.now(),
+                fechaFin = LocalDate.now().plusDays(7),
+                progreso = 45,
+                diasRestantes = 3,
+                prioridad = Prioridad.MEDIA
+            ),
             onActividadClick = {}
         )
     }
@@ -120,9 +130,11 @@ fun PreviewTarjetaTituloLargo() {
     MiFormacionCTMATheme {
         TarjetaActividad(
             actividad = ActividadFormativa(
-                id = 2,
+                id = 2L,
                 titulo = "Investigación sobre Arquitectura de Software Limpia y Patrones de Diseño Avanzados en Aplicaciones Android Modernas",
                 descripcion = null,
+                fechaInicio = LocalDate.now(),
+                fechaFin = LocalDate.now().plusDays(14),
                 progreso = 10,
                 diasRestantes = 7,
                 prioridad = Prioridad.ALTA
@@ -135,14 +147,15 @@ fun PreviewTarjetaTituloLargo() {
 @Preview(showBackground = true, name = "Límites de Progreso")
 @Composable
 fun PreviewTarjetaLimites() {
+    val hoy = LocalDate.now()
     MiFormacionCTMATheme {
         Column(Modifier.padding(8.dp)) {
             TarjetaActividad(
-                actividad = ActividadFormativa(3, "Pendiente", null, 0, 10, Prioridad.BAJA),
+                actividad = ActividadFormativa(3L, "Pendiente", null, hoy, hoy.plusDays(10), 0, 10, Prioridad.BAJA),
                 onActividadClick = {}
             )
             TarjetaActividad(
-                actividad = ActividadFormativa(4, "Completada", null, 100, 0, Prioridad.MEDIA),
+                actividad = ActividadFormativa(4L, "Completada", null, hoy.minusDays(5), hoy, 100, 0, Prioridad.MEDIA),
                 onActividadClick = {}
             )
         }
