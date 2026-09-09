@@ -11,4 +11,9 @@ data class ActividadFormativa(
     val progreso: Int,
     val diasRestantes: Int,
     val prioridad: Prioridad
-)
+) {
+    init {
+        require(titulo.isNotBlank()) { "El título no puede estar vacío" }
+        require(progreso in 0..100) { "El progreso debe estar entre 0 y 100" }
+    }
+}

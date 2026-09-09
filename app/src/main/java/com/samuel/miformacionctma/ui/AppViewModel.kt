@@ -9,16 +9,14 @@ import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
 import com.samuel.miformacionctma.data.repository.AppRepository
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
+import com.samuel.miformacionctma.network.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-/**
- * ViewModel que gestiona el estado reactivo de la aplicación usando Flow y StateFlow.
- * Implementa la lógica de filtrado, búsqueda y manejo de operaciones asíncronas.
- */
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: AppRepository
@@ -26,7 +24,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val db = AppDatabase.getDatabase(application)
-        repository = AppRepository(db)
+        val tokenProvider = object : TokenProvider {
+            override fun getToken(): String? = "MOCK_TOKEN"
+        }
+        val apiClient = ApiClient(tokenProvider)
+        val apiService = apiClient.createService<ActividadApiService>()
+        val remoteDataSource = RemoteActividadDataSource(apiService)
+        
+        repository = AppRepository(db, remoteDataSource)
         userPrefs = UserPreferencesRepository(application)
     }
 
@@ -50,10 +55,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _operacionState = MutableStateFlow<OperacionUiState>(OperacionUiState.Inactiva)
     val operacionState = _operacionState.asStateFlow()
 
-    /**
-     * Estado reactivo del listado de actividades (Semana 7).
-     */
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val _lastUpdate = MutableStateFlow<LocalDateTime?>(null)
+    val lastUpdate = _lastUpdate.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ListadoUiState> = _searchQuery
         .debounce(300)
         .flatMapLatest { query ->
@@ -82,23 +87,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = ListadoUiState.Cargando
         )
 
-    // --- Propiedades requeridas por otras pantallas ---
+    // --- Propiedades reactivas con OptIn ---
 
     val actividades = repository.getActividadesStream("")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val asistencias = userId.flatMapLatest { id ->
         if (id != null) repository.getAsistencias(id) else flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val bitacoras = userId.flatMapLatest { id ->
         if (id != null) repository.getBitacoras(id) else flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val novedades = userId.flatMapLatest { id ->
         if (id != null) repository.getNovedades(id) else flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val certificados = userId.flatMapLatest { id ->
         if (id != null) repository.getCertificados(id) else flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -115,6 +124,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardData())
 
     // --- Acciones del ViewModel ---
+
+    fun refresh() {
+        viewModelScope.launch {
+            _operacionState.value = OperacionUiState.EnCurso
+            when (val result = repository.refreshActividades()) {
+                is NetworkResult.Success -> {
+                    _operacionState.value = OperacionUiState.Exitosa
+                    _lastUpdate.value = LocalDateTime.now()
+                }
+                is NetworkResult.Error -> {
+                    _operacionState.value = OperacionUiState.Fallida(result.errorType, result.message)
+                }
+            }
+        }
+    }
 
     fun addActividad(titulo: String, desc: String, fInicio: LocalDate, fFin: LocalDate, prior: Prioridad) {
         viewModelScope.launch {
@@ -135,7 +159,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
-                _operacionState.value = OperacionUiState.Fallida(e.message ?: "Error al guardar")
+                _operacionState.value = OperacionUiState.Fallida(NetworkError.Desconocido, e.message)
             }
         }
     }
@@ -149,7 +173,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
-                _operacionState.value = OperacionUiState.Fallida(e.message ?: "Error al eliminar")
+                _operacionState.value = OperacionUiState.Fallida(NetworkError.Desconocido, e.message)
+            }
+        }
+    }
+
+    /**
+     * Agrega una nueva novedad al repositorio.
+     */
+    fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
+        viewModelScope.launch {
+            _operacionState.value = OperacionUiState.EnCurso
+            try {
+                repository.saveNovedad(
+                    NovedadEntity(
+                        userId = userId.value ?: "unknown",
+                        tipo = tipo,
+                        motivo = motivo,
+                        fecha = fecha,
+                        documentoAdjunto = adjunto
+                    )
+                )
+                _operacionState.value = OperacionUiState.Exitosa
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                _operacionState.value = OperacionUiState.Fallida(NetworkError.Desconocido, e.message)
             }
         }
     }
@@ -171,13 +220,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     horas = horas
                 )
             )
-        }
-    }
-
-    fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
-        viewModelScope.launch {
-            // repository.saveNovedad(NovedadEntity(...)) 
-            // Note: I might need to implement saveNovedad in repository if missing
         }
     }
 
@@ -226,12 +268,3 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { userPrefs.clearUser() }
     }
 }
-
-data class DashboardData(
-    val totalActividades: Int = 0,
-    val completadas: Int = 0,
-    val enProceso: Int = 0,
-    val pendientes: Int = 0,
-    val vencidas: Int = 0,
-    val progresoGeneral: Int = 0
-)

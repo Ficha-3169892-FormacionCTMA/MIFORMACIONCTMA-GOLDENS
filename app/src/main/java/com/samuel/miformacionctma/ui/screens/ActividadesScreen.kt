@@ -18,10 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.samuel.miformacionctma.model.ActividadFormativa
-import com.samuel.miformacionctma.model.Prioridad
+import com.samuel.miformacionctma.network.NetworkError
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.ListadoUiState
 import com.samuel.miformacionctma.ui.OperacionUiState
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,21 +30,26 @@ fun ActividadesScreen(viewModel: AppViewModel, navController: NavController) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val operacionState by viewModel.operacionState.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val lastUpdate by viewModel.lastUpdate.collectAsStateWithLifecycle()
     
     val snackbarHostState = remember { SnackbarHostState() }
     var showFilters by remember { mutableStateOf(false) }
 
+    // Sincronización al iniciar
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
+
+    // Manejo de mensajes de error de red
     LaunchedEffect(operacionState) {
-        when (operacionState) {
-            is OperacionUiState.Fallida -> {
-                snackbarHostState.showSnackbar((operacionState as OperacionUiState.Fallida).mensaje)
-                viewModel.resetOperacionState()
+        if (operacionState is OperacionUiState.Fallida) {
+            val error = operacionState as OperacionUiState.Fallida
+            val mensaje = when (error.error) {
+                NetworkError.NoAutorizado -> "Sesión expirada. Por favor, inicia sesión de nuevo."
+                NetworkError.SinConexion -> "Sin conexión. Mostrando datos locales."
+                else -> "Error de sincronización: ${error.mensaje ?: "Desconocido"}"
             }
-            OperacionUiState.Exitosa -> {
-                snackbarHostState.showSnackbar("Operación realizada con éxito")
-                viewModel.resetOperacionState()
-            }
-            else -> {}
+            snackbarHostState.showSnackbar(mensaje)
         }
     }
 
@@ -51,8 +57,22 @@ fun ActividadesScreen(viewModel: AppViewModel, navController: NavController) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Gestión de Actividades") },
+                title = { 
+                    Column {
+                        Text("Actividades")
+                        lastUpdate?.let {
+                            Text(
+                                "Sincronizado: ${it.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 actions = {
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sincronizar")
+                    }
                     IconButton(onClick = { showFilters = !showFilters }) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filtros")
                     }
@@ -66,7 +86,11 @@ fun ActividadesScreen(viewModel: AppViewModel, navController: NavController) {
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Barra de búsqueda reactiva
+            // Indicador de carga de red
+            if (operacionState is OperacionUiState.EnCurso) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
@@ -81,23 +105,13 @@ fun ActividadesScreen(viewModel: AppViewModel, navController: NavController) {
                 FilterSection(viewModel)
             }
 
-            // Indicador de operación en curso
-            if (operacionState is OperacionUiState.EnCurso) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Procesando...", style = MaterialTheme.typography.labelSmall)
-                }
+            // Banner de reintento si falló la sincronización pero hay datos locales
+            if (operacionState is OperacionUiState.Fallida && (operacionState as OperacionUiState.Fallida).error != NetworkError.NoAutorizado) {
+                RetryBanner(onRetry = { viewModel.refresh() })
             }
 
-            // Manejo de estados de listado
             when (uiState) {
-                is ListadoUiState.Cargando -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
+                is ListadoUiState.Cargando -> LoadingState()
                 is ListadoUiState.Contenido -> {
                     val lista = (uiState as ListadoUiState.Contenido).data
                     LazyColumn(
@@ -109,15 +123,11 @@ fun ActividadesScreen(viewModel: AppViewModel, navController: NavController) {
                         }
                     }
                 }
-                is ListadoUiState.Vacio -> {
-                    EmptyState(onAction = { viewModel.setSearchQuery("") })
-                }
-                is ListadoUiState.Error -> {
-                    ErrorState(
-                        mensaje = (uiState as ListadoUiState.Error).mensaje,
-                        onReintentar = { viewModel.setSearchQuery(searchQuery) }
-                    )
-                }
+                is ListadoUiState.Vacio -> EmptyState(onAction = { viewModel.setSearchQuery("") })
+                is ListadoUiState.Error -> ErrorState(
+                    mensaje = (uiState as ListadoUiState.Error).mensaje,
+                    onReintentar = { viewModel.refresh() }
+                )
             }
         }
     }
@@ -126,19 +136,52 @@ fun ActividadesScreen(viewModel: AppViewModel, navController: NavController) {
 @Composable
 fun FilterSection(viewModel: AppViewModel) {
     val priorities = listOf("TODAS", "ALTA", "MEDIA", "BAJA")
+    val currentFiltro by viewModel.filtroPrioridad.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Text("Filtrar por prioridad:", style = MaterialTheme.typography.labelLarge)
+    
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Prioridad:", style = MaterialTheme.typography.labelLarge)
         Row(modifier = Modifier.horizontalScroll(scrollState)) {
             priorities.forEach { p ->
                 FilterChip(
-                    selected = false, // Conectar con State en VM si es necesario
+                    selected = currentFiltro == p,
                     onClick = { viewModel.setFilterPrioridad(p) },
                     label = { Text(p) },
                     modifier = Modifier.padding(end = 4.dp)
                 )
             }
         }
+    }
+}
+
+@Composable
+fun RetryBanner(onRetry: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.CloudOff, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "No se pudo sincronizar",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onRetry) {
+                Text("REINTENTAR")
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingState() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
 
@@ -151,7 +194,7 @@ fun ActividadItem(actividad: ActividadFormativa, onClick: () -> Unit) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(actividad.titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(actividad.descripcion ?: "", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                Text(actividad.descripcion ?: "Sin descripción", style = MaterialTheme.typography.bodySmall, maxLines = 1)
             }
             if (actividad.progreso == 100) {
                 Icon(Icons.Default.CheckCircle, contentDescription = "Completada", tint = Color(0xFF39A900))
@@ -166,8 +209,8 @@ fun ActividadItem(actividad: ActividadFormativa, onClick: () -> Unit) {
 fun EmptyState(onAction: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
         Icon(Icons.Default.Inbox, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-        Text("No se encontraron actividades", color = Color.Gray)
-        TextButton(onClick = onAction) { Text("Limpiar búsqueda") }
+        Text("No hay actividades registradas", color = Color.Gray)
+        TextButton(onClick = onAction) { Text("Limpiar filtros o buscar") }
     }
 }
 
@@ -179,7 +222,7 @@ fun ErrorState(mensaje: String, onReintentar: () -> Unit) {
         Button(onClick = onReintentar, modifier = Modifier.padding(top = 16.dp)) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Reintentar")
+            Text("Sincronizar")
         }
     }
 }
