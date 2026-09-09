@@ -15,8 +15,9 @@ class UserPreferencesRepository(private val context: Context) {
         val USER_ROLE = stringPreferencesKey("user_role")
         val AUTH_TOKEN = stringPreferencesKey("auth_token")
         val USER_NAME = stringPreferencesKey("user_name")
-        val THEME_MODE = stringPreferencesKey("theme_mode") // "LIGHT", "DARK", "SYSTEM"
-        val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale") // "SMALL", "MEDIUM", "LARGE"
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
+        val FILTRO_PRIORIDAD = stringPreferencesKey("filtro_prioridad") // "TODAS", "ALTA", "MEDIA", "BAJA"
     }
 
     val userId: Flow<String?> = context.dataStore.data.map { it[USER_ID] }
@@ -25,6 +26,7 @@ class UserPreferencesRepository(private val context: Context) {
     val userName: Flow<String?> = context.dataStore.data.map { it[USER_NAME] }
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "SYSTEM" }
     val fontSizeScale: Flow<String> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: "MEDIUM" }
+    val filtroPrioridad: Flow<String> = context.dataStore.data.map { it[FILTRO_PRIORIDAD] ?: "TODAS" }
 
     suspend fun saveUser(id: String, role: String, token: String, name: String) {
         context.dataStore.edit { prefs ->
@@ -50,5 +52,9 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun setFontSizeScale(scale: String) {
         context.dataStore.edit { it[FONT_SIZE_SCALE] = scale }
+    }
+
+    suspend fun setFiltroPrioridad(prioridad: String) {
+        context.dataStore.edit { it[FILTRO_PRIORIDAD] = prioridad }
     }
 }

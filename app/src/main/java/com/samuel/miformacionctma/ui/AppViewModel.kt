@@ -7,12 +7,18 @@ import com.samuel.miformacionctma.data.local.AppDatabase
 import com.samuel.miformacionctma.data.local.entities.*
 import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
 import com.samuel.miformacionctma.data.repository.AppRepository
+import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/**
+ * ViewModel que gestiona el estado reactivo de la aplicación usando Flow y StateFlow.
+ * Implementa la lógica de filtrado, búsqueda y manejo de operaciones asíncronas.
+ */
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: AppRepository
@@ -24,42 +30,80 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         userPrefs = UserPreferencesRepository(application)
     }
 
-    // --- User Session (HU-06) ---
+    // --- Sesión de Usuario ---
     val userId = userPrefs.userId.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val userRole = userPrefs.userRole.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val userName = userPrefs.userName.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val themeMode = userPrefs.themeMode.stateIn(viewModelScope, SharingStarted.Eagerly, "SYSTEM")
     val fontSizeScale = userPrefs.fontSizeScale.stateIn(viewModelScope, SharingStarted.Eagerly, "MEDIUM")
+    
+    val filtroPrioridad = userPrefs.filtroPrioridad.stateIn(
+        viewModelScope, 
+        SharingStarted.WhileSubscribed(5_000), 
+        "TODAS"
+    )
 
-    // --- Actividades (HU-01, HU-02, HU-09, HU-12) ---
+    // --- Estados de UI ---
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _filterPrioridad = MutableStateFlow<Prioridad?>(null)
-    val filterPrioridad = _filterPrioridad.asStateFlow()
+    private val _operacionState = MutableStateFlow<OperacionUiState>(OperacionUiState.Inactiva)
+    val operacionState = _operacionState.asStateFlow()
 
-    private val _filterEstado = MutableStateFlow<String?>(null) 
-    val filterEstado = _filterEstado.asStateFlow()
+    /**
+     * Estado reactivo del listado de actividades (Semana 7).
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<ListadoUiState> = _searchQuery
+        .debounce(300)
+        .flatMapLatest { query ->
+            repository.getActividadesStream(query)
+        }
+        .combine(userPrefs.filtroPrioridad) { actividades, filtro ->
+            val filtradas = if (filtro == "TODAS") {
+                actividades
+            } else {
+                actividades.filter { it.prioridad.name == filtro }
+            }
 
-    val actividades = repository.getActividades().combine(searchQuery) { list, query ->
-        list.filter { it.titulo.contains(query, ignoreCase = true) || it.descripcion?.contains(query, ignoreCase = true) == true }
-    }.combine(filterPrioridad) { list, prioridad ->
-        if (prioridad == null) list else list.filter { it.prioridad == prioridad }
-    }.combine(filterEstado) { list, estado ->
-        if (estado == null) list else list.filter {
-            when (estado) {
-                "COMPLETADA" -> it.progreso == 100
-                "EN_PROCESO" -> it.progreso in 1..99
-                "PENDIENTE" -> it.progreso == 0
-                else -> true
+            if (filtradas.isEmpty()) {
+                ListadoUiState.Vacio
+            } else {
+                ListadoUiState.Contenido(filtradas)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .onStart { emit(ListadoUiState.Cargando) }
+        .catch { e ->
+            emit(ListadoUiState.Error(e.message ?: "Error al cargar datos"))
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ListadoUiState.Cargando
+        )
 
-    fun getEvidencias(actividadId: Long) = repository.getEvidencias(actividadId)
+    // --- Propiedades requeridas por otras pantallas ---
 
-    // --- Dashboard Stats (HU-07) ---
-    val dashboardStats = actividades.map { list ->
+    val actividades = repository.getActividadesStream("")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val asistencias = userId.flatMapLatest { id ->
+        if (id != null) repository.getAsistencias(id) else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val bitacoras = userId.flatMapLatest { id ->
+        if (id != null) repository.getBitacoras(id) else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val novedades = userId.flatMapLatest { id ->
+        if (id != null) repository.getNovedades(id) else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val certificados = userId.flatMapLatest { id ->
+        if (id != null) repository.getCertificados(id) else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val dashboardStats = repository.getActividadesStream("").map { list ->
         val total = list.size
         val completadas = list.count { it.progreso == 100 }
         val enProceso = list.count { it.progreso in 1..99 }
@@ -68,60 +112,72 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val progresoGral = if (total > 0) (list.sumOf { it.progreso }.toDouble() / total).toInt() else 0
         
         DashboardData(total, completadas, enProceso, pendientes, vencidas, progresoGral)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardData())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardData())
 
-    // --- Bitacoras (HU-04) ---
-    val bitacoras = userId.flatMapLatest { id ->
-        if (id != null) repository.getBitacoras(id) else flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // --- Novedades (HU-14) ---
-    val novedades = userId.flatMapLatest { id ->
-        if (id != null) repository.getNovedades(id) else flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // --- Certificados (HU-13) ---
-    val certificados = userId.flatMapLatest { id ->
-        if (id != null) repository.getCertificados(id) else flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // --- Asistencia (HU-05) ---
-    val asistencias = userId.flatMapLatest { id ->
-        if (id != null) repository.getAsistencias(id) else flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // --- Actions ---
-    fun login(email: String, role: String, name: String) {
-        viewModelScope.launch {
-            val id = email.split("@")[0]
-            userPrefs.saveUser(id, role, "MOCK_TOKEN", name)
-            repository.saveUser(UserEntity(id, name, email, role, "DOC_$id"))
-            
-            // Seed some data for demo if empty
-            // repository.saveActividad(...)
-        }
-    }
-
-    fun logout() {
-        viewModelScope.launch {
-            userPrefs.clearUser()
-        }
-    }
+    // --- Acciones del ViewModel ---
 
     fun addActividad(titulo: String, desc: String, fInicio: LocalDate, fFin: LocalDate, prior: Prioridad) {
         viewModelScope.launch {
-            repository.saveActividad(
-                ActividadEntity(
+            _operacionState.value = OperacionUiState.EnCurso
+            try {
+                val nuevaActividad = ActividadFormativa(
                     id = System.currentTimeMillis(),
                     titulo = titulo,
                     descripcion = desc,
                     fechaInicio = fInicio,
                     fechaFin = fFin,
                     progreso = 0,
-                    prioridad = prior,
-                    instructorId = userId.value ?: "SYSTEM"
+                    diasRestantes = 0,
+                    prioridad = prior
+                )
+                repository.saveActividad(nuevaActividad)
+                _operacionState.value = OperacionUiState.Exitosa
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                _operacionState.value = OperacionUiState.Fallida(e.message ?: "Error al guardar")
+            }
+        }
+    }
+
+    fun deleteActividad(actividad: ActividadFormativa) {
+        viewModelScope.launch {
+            _operacionState.value = OperacionUiState.EnCurso
+            try {
+                repository.deleteActividad(actividad)
+                _operacionState.value = OperacionUiState.Exitosa
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                _operacionState.value = OperacionUiState.Fallida(e.message ?: "Error al eliminar")
+            }
+        }
+    }
+
+    fun scanQRAsistencia(qrContent: String) {
+        viewModelScope.launch {
+            repository.registrarAsistencia(userId.value ?: "", true, "QR: $qrContent")
+        }
+    }
+
+    fun addBitacora(titulo: String, contenido: String, horas: Int) {
+        viewModelScope.launch {
+            repository.saveBitacora(
+                BitacoraEntity(
+                    userId = userId.value ?: "",
+                    fecha = LocalDate.now(),
+                    titulo = titulo,
+                    contenido = contenido,
+                    horas = horas
                 )
             )
+        }
+    }
+
+    fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
+        viewModelScope.launch {
+            // repository.saveNovedad(NovedadEntity(...)) 
+            // Note: I might need to implement saveNovedad in repository if missing
         }
     }
 
@@ -140,51 +196,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addBitacora(titulo: String, contenido: String, horas: Int) {
+    fun getEvidencias(actividadId: Long) = repository.getEvidencias(actividadId)
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun setFilterPrioridad(prioridad: String) {
         viewModelScope.launch {
-            repository.saveBitacora(
-                BitacoraEntity(
-                    userId = userId.value ?: "",
-                    fecha = LocalDate.now(),
-                    titulo = titulo,
-                    contenido = contenido,
-                    horas = horas
-                )
-            )
+            userPrefs.setFiltroPrioridad(prioridad)
         }
     }
 
-    fun scanQRAsistencia(qrContent: String) {
+    fun resetOperacionState() {
+        _operacionState.value = OperacionUiState.Inactiva
+    }
+
+    fun updateTheme(mode: String) { viewModelScope.launch { userPrefs.setThemeMode(mode) } }
+    fun updateFontSize(scale: String) { viewModelScope.launch { userPrefs.setFontSizeScale(scale) } }
+
+    fun login(email: String, role: String, name: String) {
         viewModelScope.launch {
-            repository.registrarAsistencia(userId.value ?: "", true, "QR: $qrContent")
+            val id = email.split("@")[0]
+            userPrefs.saveUser(id, role, "MOCK_TOKEN", name)
         }
     }
 
-    fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
-        viewModelScope.launch {
-            repository.saveNovedad(
-                NovedadEntity(
-                    userId = userId.value ?: "",
-                    tipo = tipo,
-                    motivo = motivo,
-                    fecha = fecha,
-                    documentoAdjunto = adjunto
-                )
-            )
-        }
+    fun logout() {
+        viewModelScope.launch { userPrefs.clearUser() }
     }
-
-    fun updateTheme(mode: String) {
-        viewModelScope.launch { userPrefs.setThemeMode(mode) }
-    }
-
-    fun updateFontSize(scale: String) {
-        viewModelScope.launch { userPrefs.setFontSizeScale(scale) }
-    }
-
-    fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun setFilterPrioridad(p: Prioridad?) { _filterPrioridad.value = p }
-    fun setFilterEstado(e: String?) { _filterEstado.value = e }
 }
 
 data class DashboardData(

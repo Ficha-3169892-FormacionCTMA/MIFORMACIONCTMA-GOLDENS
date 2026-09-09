@@ -8,13 +8,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.components.OfflineIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BitacoraScreen(viewModel: AppViewModel) {
-    val bitacoras by viewModel.bitacoras.collectAsState()
+    val bitacoras by viewModel.bitacoras.collectAsStateWithLifecycle()
     
     var titulo by remember { mutableStateOf("") }
     var contenido by remember { mutableStateOf("") }

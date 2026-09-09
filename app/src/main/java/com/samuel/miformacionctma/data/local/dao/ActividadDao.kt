@@ -9,6 +9,9 @@ interface ActividadDao {
     @Query("SELECT * FROM actividades ORDER BY fechaFin ASC")
     fun getAllActividades(): Flow<List<ActividadEntity>>
 
+    @Query("SELECT * FROM actividades WHERE titulo LIKE '%' || :query || '%' OR descripcion LIKE '%' || :query || '%' ORDER BY fechaFin ASC")
+    fun searchActividades(query: String): Flow<List<ActividadEntity>>
+
     @Query("SELECT * FROM actividades WHERE id = :id")
     suspend fun getActividadById(id: Long): ActividadEntity?
 
@@ -20,4 +23,7 @@ interface ActividadDao {
 
     @Update
     suspend fun updateActividad(actividad: ActividadEntity)
+
+    @Delete
+    suspend fun deleteActividad(actividad: ActividadEntity)
 }
