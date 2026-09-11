@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.samuel.miformacionctma.data.local.AppDatabase
-import com.samuel.miformacionctma.data.local.entities.*
 import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
 import com.samuel.miformacionctma.data.repository.AppRepository
 import com.samuel.miformacionctma.model.ActividadFormativa
@@ -17,23 +16,19 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository: AppRepository
-    private val userPrefs: UserPreferencesRepository
-
-    init {
-        val db = AppDatabase.getDatabase(application)
-        val tokenProvider = object : TokenProvider {
-            override fun getToken(): String? = "MOCK_TOKEN"
-        }
-        val apiClient = ApiClient(tokenProvider)
-        val apiService = apiClient.createService<ActividadApiService>()
-        val remoteDataSource = RemoteActividadDataSource(apiService)
-        
-        repository = AppRepository(db, remoteDataSource)
-        userPrefs = UserPreferencesRepository(application)
-    }
+class AppViewModel(
+    application: Application,
+    // Dependency injection via constructor for better testing
+    private val repository: AppRepository = AppRepository(
+        AppDatabase.getDatabase(application),
+        RemoteActividadDataSource(
+            ApiClient(object : TokenProvider {
+                override fun getToken(): String? = "MOCK_TOKEN"
+            }).createService<ActividadApiService>()
+        )
+    ),
+    private val userPrefs: UserPreferencesRepository = UserPreferencesRepository(application)
+) : AndroidViewModel(application) {
 
     // --- Sesión de Usuario ---
     val userId = userPrefs.userId.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -87,8 +82,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = ListadoUiState.Cargando
         )
 
-    // --- Propiedades reactivas con OptIn ---
-
+    // --- Propiedades requeridas por otras pantallas ---
     val actividades = repository.getActividadesStream("")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -178,15 +172,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Agrega una nueva novedad al repositorio.
-     */
     fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
             try {
                 repository.saveNovedad(
-                    NovedadEntity(
+                    com.samuel.miformacionctma.data.local.entities.NovedadEntity(
                         userId = userId.value ?: "unknown",
                         tipo = tipo,
                         motivo = motivo,
@@ -212,7 +203,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun addBitacora(titulo: String, contenido: String, horas: Int) {
         viewModelScope.launch {
             repository.saveBitacora(
-                BitacoraEntity(
+                com.samuel.miformacionctma.data.local.entities.BitacoraEntity(
                     userId = userId.value ?: "",
                     fecha = LocalDate.now(),
                     titulo = titulo,
@@ -226,7 +217,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun submitEvidencia(actividadId: Long, url: String) {
         viewModelScope.launch {
             repository.saveEvidencia(
-                EvidenciaEntity(
+                com.samuel.miformacionctma.data.local.entities.EvidenciaEntity(
                     actividadId = actividadId,
                     userId = userId.value ?: "",
                     nombreArchivo = "Evidencia_${System.currentTimeMillis()}",

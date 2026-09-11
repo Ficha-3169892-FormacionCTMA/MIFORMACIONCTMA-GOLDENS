@@ -1,28 +1,41 @@
 package com.samuel.miformacionctma
 
-import com.samuel.miformacionctma.model.ActividadFormativa
-import com.samuel.miformacionctma.model.Prioridad
+import app.cash.turbine.test
+import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
+import com.samuel.miformacionctma.fakes.FakeAppRepository
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.ListadoUiState
-import com.samuel.miformacionctma.ui.OperacionUiState
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-import java.time.LocalDate
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var fakeRepository: FakeAppRepository
+    private lateinit var mockPrefs: UserPreferencesRepository
+    private lateinit var viewModel: AppViewModel
+    
+    private val filtroPrioridadFlow = MutableStateFlow("TODAS")
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        fakeRepository = FakeAppRepository()
+        mockPrefs = mockk(relaxed = true)
+        
+        // Setup mock to return a flow that emits values
+        every { mockPrefs.filtroPrioridad } returns filtroPrioridadFlow
+        
+        viewModel = AppViewModel(mockk(relaxed = true), fakeRepository, mockPrefs)
     }
 
     @After
@@ -30,35 +43,49 @@ class AppViewModelTest {
         Dispatchers.resetMain()
     }
 
-    // Nota: Para estas pruebas se asume un refactor de AppViewModel para inyectar dependencias
-    // o el uso de un Service Locator/Hilt. Aquí simulamos la lógica requerida por los CA.
-
     @Test
     fun `CA-01 abrir sin datos pasa por Cargando y termina en Vacio`() = runTest {
-        // Simulación: Al iniciar, el estado inicial es Cargando y luego Vacio si el repo no tiene nada
-        // val viewModel = AppViewModel(fakeRepo, fakePrefs)
-        // val state = viewModel.uiState.value
-        // assertTrue(state is ListadoUiState.Vacio)
+        viewModel.uiState.test {
+            // Initial state from stateIn
+            assertEquals(ListadoUiState.Cargando, awaitItem())
+            
+            // Advance time to pass debounce(300)
+            advanceTimeBy(301)
+            
+            // Fake repository is empty by default, so it should emit Vacio
+            assertEquals(ListadoUiState.Vacio, awaitItem())
+        }
     }
 
     @Test
     fun `CA-02 insertar una actividad actualiza Contenido automaticamente`() = runTest {
-        // Simulación de flujo reactivo Room -> Repository -> ViewModel
+        viewModel.uiState.test {
+            assertEquals(ListadoUiState.Cargando, awaitItem())
+            
+            // Initial empty state
+            advanceTimeBy(301)
+            assertEquals(ListadoUiState.Vacio, awaitItem())
+
+            // Insert data
+            val nuevaActividad = createActividadDominio(id = 1L, titulo = "Nueva Tarea")
+            fakeRepository.emitActividades(listOf(nuevaActividad))
+
+            // The flow should react
+            val state = awaitItem()
+            assertTrue(state is ListadoUiState.Contenido)
+            assertEquals(1, (state as ListadoUiState.Contenido).data.size)
+            assertEquals("Nueva Tarea", state.data[0].titulo)
+        }
     }
 
     @Test
-    fun `CA-04 busquedas rapidas cancelan la anterior y prevalece la ultima`() = runTest {
-        // Se valida el uso de flatMapLatest y debounce
-    }
+    fun `CA-05 fallo del repository en refresh se refleja en operacionState`() = runTest {
+        fakeRepository.shouldReturnError = true
+        
+        viewModel.refresh()
+        advanceUntilIdle()
 
-    @Test
-    fun `CA-05 fallo del repository es capturado como estado de Error`() = runTest {
-        // Validar transicion a ListadoUiState.Error
-    }
-
-    @Test
-    fun `CA-08 la suite corre con runTest sin Thread sleep`() {
-        // Validación de infraestructura de pruebas
-        assertTrue(true)
+        val state = viewModel.operacionState.value
+        assertTrue(state is com.samuel.miformacionctma.ui.OperacionUiState.Fallida)
     }
 }
