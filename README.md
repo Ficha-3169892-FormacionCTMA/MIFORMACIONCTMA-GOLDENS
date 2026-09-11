@@ -75,24 +75,53 @@ La aplicación implementa un flujo de datos unidireccional (UDF) y reactivo sigu
 
 ---
 
-## ✅ Casos de Aceptación (Semana 7)
+# Semana 8: Servicios Web, Caché y Resiliencia (Android)
 
-| ID | Caso de Prueba | Resultado |
-|:---|:---|:---:|
-| **CA-01** | Abrir app sin datos previos | **PASÓ** (Muestra Cargando -> Estado Vacío) |
-| **CA-02** | Insertar actividad nueva | **PASÓ** (Room emite flujo y UI se actualiza reactivamente) |
-| **CA-03** | Cambio de filtro de prioridad | **PASÓ** (DataStore persiste y `combine` recalcula el flujo) |
-| **CA-04** | Búsquedas rápidas (Debounce/Cancel) | **PASÓ** (Se cancela consulta previa, prevalece última búsqueda) |
-| **CA-05** | Error forzado en Repository | **PASÓ** (Captura excepción, muestra ErrorUiState con Reintentar) |
-| **CA-06** | Cancelación por ciclo de vida | **PASÓ** (El Job se cancela automáticamente al cerrar el ViewModel) |
-| **CA-07** | Rotación de pantalla | **PASÓ** (StateFlow conserva estado, no se repiten inserciones) |
-| **CA-08** | Suite de pruebas (RunTest) | **PASÓ** (Ejecución asíncrona validada sin Thread.sleep) |
+## 🌐 Arquitectura Offline-First
+Para garantizar que el aprendiz pueda consultar sus actividades incluso sin conexión, se ha implementado un esquema de **Fuente Única de Verdad (SSOT)**:
+1. La **API** provee los datos crudos (DTOs).
+2. El **Repositorio** los procesa y persiste en **Room**.
+3. La **UI** solo observa a Room a través de Flows.
+
+### 🛡️ Estrategias de Resiliencia
+- **Persistencia en Fallos:** Si la API falla (Timeout, 500), se capturan las excepciones y se mantiene el último caché válido en Room. La UI muestra un estado de error de actualización sin perder los datos previos.
+- **Transacciones Atómicas:** El guardado de datos remotos se realiza en transacciones de Room para evitar estados inconsistentes.
+
+### 🚀 Ejecución y Verificación (Android)
+```bash
+# Correr todas las pruebas unitarias (Semana 8)
+./gradlew test
+
+# Ejecutar tests del Repositorio
+./gradlew :app:testDebugUnitTest --tests "com.samuel.miformacionctma.data.repository.*"
+```
 
 ---
 
-## 🛠️ Tecnologías Implementadas (Semana 7)
-- **Kotlin Coroutines:** Manejo de asincronía y main-safety.
-- **Flow / StateFlow:** Flujos de datos reactivos y conservación de estado.
-- **DataStore:** Persistencia de preferencias de usuario reactiva.
-- **Room + Flow:** Consultas a base de datos que notifican cambios automáticamente.
-- **Lifecycle Runtime Compose:** Recolección de flujo optimizada para Compose.
+# 📦 Proyecto Complementario: EntregaSegura (Node.js/API)
+
+### 🚀 Ejecución de Pruebas Automatizadas
+Para configurar el entorno y verificar la suite de pruebas:
+
+```bash
+# 1. Instalación
+npm install -D vitest @vitest/coverage-v8 supertest
+
+# 2. Ejecutar pruebas (Vitest)
+npm run test
+
+# 3. Reporte de cobertura
+npm run test:coverage
+```
+
+### 🧪 Estrategia de Calidad (Shift-Left)
+| Requisito | Riesgo | Nivel | Test Automatizado |
+| :--- | :--- | :--- | :--- |
+| Trazabilidad estados | Cambio ilegal | Unidad | `orders.spec.ts` -> Matriz |
+| Entrega con evidencia | Fraude | Unidad/TDD | `orders.spec.ts` -> EVIDENCE_REQUIRED |
+| Seguridad API | Acceso no autorizado | API | `orders.api.spec.ts` -> POST /login |
+
+#### Definition of Done (DoD)
+- [ ] Suite de pruebas en verde (Sin Flaky Tests).
+- [ ] Cobertura de ramas superior al 80%.
+- [ ] Cero credenciales reales en Git (Tokens sintéticos).

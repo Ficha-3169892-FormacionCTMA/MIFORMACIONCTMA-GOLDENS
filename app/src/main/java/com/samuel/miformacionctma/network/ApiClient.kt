@@ -1,14 +1,21 @@
 package com.samuel.miformacionctma.network
 
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object ApiClient {
     private const val BASE_URL = "https://staging.miformacionctma.sena.edu.co/api/"
 
-    // Interceptor para capturar y visualizar tráfico HTTP en Logcat (DevTools Network)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
+
+    // Interceptor para capturar y visualizar tráfico HTTP en Logcat
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
@@ -29,6 +36,6 @@ object ApiClient {
     val instance: Retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(okHttpClient)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
 }

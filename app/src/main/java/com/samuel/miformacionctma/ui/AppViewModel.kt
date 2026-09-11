@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.samuel.miformacionctma.data.local.AppDatabase
 import com.samuel.miformacionctma.data.local.entities.*
 import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
+import com.samuel.miformacionctma.data.remote.RemoteActividadDataSource
+import com.samuel.miformacionctma.data.remote.TokenProvider
 import com.samuel.miformacionctma.data.repository.AppRepository
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
@@ -26,8 +28,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val db = AppDatabase.getDatabase(application)
-        repository = AppRepository(db)
+        val tokenProvider = TokenProvider()
+        val remoteDataSource = RemoteActividadDataSource(tokenProvider)
+        repository = AppRepository(db, remoteDataSource)
         userPrefs = UserPreferencesRepository(application)
+        
+        // Sincronización inicial
+        refreshActividades()
     }
 
     // --- Sesión de Usuario ---
@@ -116,6 +123,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Acciones del ViewModel ---
 
+    fun refreshActividades() {
+        viewModelScope.launch {
+            _operacionState.value = OperacionUiState.EnCurso
+            try {
+                repository.refreshActividades()
+                _operacionState.value = OperacionUiState.Exitosa
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                _operacionState.value = OperacionUiState.Fallida(e.message ?: "Error al sincronizar")
+            }
+        }
+    }
+
     fun addActividad(titulo: String, desc: String, fInicio: LocalDate, fFin: LocalDate, prior: Prioridad) {
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
@@ -177,7 +198,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
         viewModelScope.launch {
             // repository.saveNovedad(NovedadEntity(...)) 
-            // Note: I might need to implement saveNovedad in repository if missing
         }
     }
 

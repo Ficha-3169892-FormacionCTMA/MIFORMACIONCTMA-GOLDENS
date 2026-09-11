@@ -2,6 +2,8 @@ package com.samuel.miformacionctma
 
 import com.samuel.miformacionctma.network.ApiService
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -9,12 +11,13 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 class BitacoraApiTest {
 
     private lateinit var mockWebServer: MockWebServer
     private lateinit var apiService: ApiService
+    private val json = Json { ignoreUnknownKeys = true }
 
     @Before
     fun setup() {
@@ -22,7 +25,7 @@ class BitacoraApiTest {
         mockWebServer.start()
         apiService = Retrofit.Builder()
             .baseUrl(mockWebServer.url("/"))
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(ApiService::class.java)
     }

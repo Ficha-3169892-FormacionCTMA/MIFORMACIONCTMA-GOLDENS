@@ -2,16 +2,23 @@ package com.samuel.miformacionctma.data.repository
 
 import com.samuel.miformacionctma.data.local.AppDatabase
 import com.samuel.miformacionctma.data.local.entities.*
+import com.samuel.miformacionctma.data.remote.RemoteActividadDataSource
+import com.samuel.miformacionctma.data.remote.dto.toEntity
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-class AppRepository(private val db: AppDatabase) {
+class AppRepository(
+    private val db: AppDatabase,
+    private val remoteDataSource: RemoteActividadDataSource
+) {
 
     private fun ActividadEntity.toDomain() = ActividadFormativa(
         id = id,
@@ -42,6 +49,36 @@ class AppRepository(private val db: AppDatabase) {
             db.actividadDao().searchActividades(query)
         }
         return flow.map { list -> list.map { it.toDomain() } }
+    }
+
+    /**
+     * Sincroniza las actividades desde el servicio remoto a la base de datos local.
+     * Implementa resiliencia: si falla la red, no borra el caché.
+     */
+    suspend fun refreshActividades() = withContext(Dispatchers.IO) {
+        try {
+            val response = remoteDataSource.getActividades()
+            if (response.isSuccessful) {
+                val dtos = response.body() ?: emptyList()
+                val entities = dtos.map { it.toEntity() }
+                
+                // Operación atómica en Room
+                db.actividadDao().insertActividades(entities)
+            } else {
+                val errorMsg = when(response.code()) {
+                    401 -> "Sesión expirada"
+                    in 500..599 -> "Error en el servidor"
+                    else -> "Error desconocido: ${response.code()}"
+                }
+                throw Exception(errorMsg)
+            }
+        } catch (ce: CancellationException) {
+            throw ce // Regla: relanzar para no romper cancelación
+        } catch (e: IOException) {
+            throw Exception("Sin conexión a internet o tiempo de espera agotado")
+        } catch (e: Exception) {
+            throw Exception("Fallo en la actualización: ${e.message}")
+        }
     }
     
     suspend fun getActividadById(id: Long): ActividadFormativa? = withContext(Dispatchers.IO) {
