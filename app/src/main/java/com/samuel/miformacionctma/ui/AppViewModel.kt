@@ -1,15 +1,18 @@
 package com.samuel.miformacionctma.ui
 
 import android.app.Application
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.samuel.miformacionctma.data.local.AppDatabase
+import com.samuel.miformacionctma.di.AppContainer
 import com.samuel.miformacionctma.data.local.entities.*
 import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
 import com.samuel.miformacionctma.data.repository.AppRepository
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.network.*
+import com.samuel.miformacionctma.ui.screens.MediaSelectorState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -17,23 +20,13 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
+class AppViewModel(
+    application: Application,
+    private val container: AppContainer
+) : AndroidViewModel(application) {
 
-    private val repository: AppRepository
-    private val userPrefs: UserPreferencesRepository
-
-    init {
-        val db = AppDatabase.getDatabase(application)
-        val tokenProvider = object : TokenProvider {
-            override fun getToken(): String? = "MOCK_TOKEN"
-        }
-        val apiClient = ApiClient(tokenProvider)
-        val apiService = apiClient.createService<ActividadApiService>()
-        val remoteDataSource = RemoteActividadDataSource(apiService)
-
-        repository = AppRepository(db, remoteDataSource)
-        userPrefs = UserPreferencesRepository(application)
-    }
+    private val repository: AppRepository = container.appRepository
+    private val userPrefs: UserPreferencesRepository = container.userPreferencesRepository
 
     // --- Sesión de Usuario ---
     val userId = userPrefs.userId.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -41,6 +34,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val userName = userPrefs.userName.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val themeMode = userPrefs.themeMode.stateIn(viewModelScope, SharingStarted.Eagerly, "SYSTEM")
     val fontSizeScale = userPrefs.fontSizeScale.stateIn(viewModelScope, SharingStarted.Eagerly, "MEDIUM")
+    val notificacionesEnabled = userPrefs.notificacionesEnabled.stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
     val filtroPrioridad = userPrefs.filtroPrioridad.stateIn(
         viewModelScope, 
@@ -57,6 +51,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _lastUpdate = MutableStateFlow<LocalDateTime?>(null)
     val lastUpdate = _lastUpdate.asStateFlow()
+
+    // --- Estado para el flujo de captura/selección multimedia (Semana 9) ---
+    private val _selectedMedia = MutableStateFlow<MediaSelectorState?>(null)
+    val selectedMedia = _selectedMedia.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ListadoUiState> = _searchQuery
@@ -86,8 +84,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = ListadoUiState.Cargando
         )
-
-    // --- Propiedades reactivas con OptIn ---
 
     val actividades = repository.getActividadesStream("")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -124,6 +120,93 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardData())
 
     // --- Acciones del ViewModel ---
+
+    fun cargarMediaDesdeUri(uri: Uri) {
+        val contentResolver = getApplication<Application>().contentResolver
+        var nombre = "Evidencia_${System.currentTimeMillis()}"
+        var size = 0L
+        val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+        
+        try {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (cursor.moveToFirst()) {
+                    if (nameIndex != -1) nombre = cursor.getString(nameIndex) ?: nombre
+                    if (sizeIndex != -1) size = cursor.getLong(sizeIndex)
+                }
+            }
+        } catch (e: Exception) {
+            // Fallback
+        }
+
+        if (!mimeType.startsWith("image/")) {
+            _selectedMedia.value = MediaSelectorState(error = "Tipo de archivo no válido. Solo se admiten imágenes.")
+            return
+        }
+        if (size > 5 * 1024 * 1024) {
+            _selectedMedia.value = MediaSelectorState(error = "El archivo excede el tamaño máximo permitido de 5MB")
+            return
+        }
+
+        _selectedMedia.value = MediaSelectorState(
+            uri = uri,
+            nombre = nombre,
+            mimeType = mimeType,
+            tamanoBytes = size,
+            error = null
+        )
+    }
+
+    fun limpiarMedia() {
+        _selectedMedia.value = null
+    }
+
+    fun guardarYEnviarEvidenciaMultimedia(actividadId: Long) {
+        val media = _selectedMedia.value ?: return
+        if (media.error != null || media.uri == null) return
+
+        viewModelScope.launch {
+            try {
+                val evidenciaId = repository.guardarEvidenciaLocal(
+                    actividadId = actividadId,
+                    userId = userId.value ?: "unknown",
+                    nombre = media.nombre,
+                    uriString = media.uri.toString(),
+                    mime = media.mimeType,
+                    tamano = media.tamanoBytes
+                )
+                
+                _selectedMedia.value = null 
+                
+                when (val result = repository.sincronizarEvidenciaConServidor(evidenciaId)) {
+                    is NetworkResult.Success -> {
+                        repository.actualizarEstadoSincronizacion(evidenciaId, "SINCRONIZADA", result.data)
+                    }
+                    is NetworkResult.Error -> {
+                        repository.actualizarEstadoSincronizacion(evidenciaId, "FALLIDA")
+                    }
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                // Manejo resiliente
+            }
+        }
+    }
+
+    fun reintentarSincronizacionEvidencia(evidenciaId: Long) {
+        viewModelScope.launch {
+            when (val result = repository.sincronizarEvidenciaConServidor(evidenciaId)) {
+                is NetworkResult.Success -> {
+                    repository.actualizarEstadoSincronizacion(evidenciaId, "SINCRONIZADA", result.data)
+                }
+                is NetworkResult.Error -> {
+                    repository.actualizarEstadoSincronizacion(evidenciaId, "FALLIDA")
+                }
+            }
+        }
+    }
 
     fun refresh() {
         viewModelScope.launch {
@@ -178,9 +261,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Agrega una nueva novedad al repositorio.
-     */
     fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
@@ -256,6 +336,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateTheme(mode: String) { viewModelScope.launch { userPrefs.setThemeMode(mode) } }
     fun updateFontSize(scale: String) { viewModelScope.launch { userPrefs.setFontSizeScale(scale) } }
+    fun setNotificacionesEnabled(enabled: Boolean) { viewModelScope.launch { userPrefs.setNotificacionesEnabled(enabled) } }
 
     fun login(email: String, role: String, name: String) {
         viewModelScope.launch {

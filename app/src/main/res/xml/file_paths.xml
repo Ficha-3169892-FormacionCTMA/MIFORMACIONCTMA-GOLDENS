@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Subdirectorio limitado y aislado únicamente para las evidencias de la app -->
+    <cache-path name="evidencias_cache" path="evidencias/" />
+</paths>

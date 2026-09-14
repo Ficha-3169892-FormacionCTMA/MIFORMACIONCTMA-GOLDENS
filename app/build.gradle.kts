@@ -20,6 +20,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    flavorDimensions.add("environment")
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            buildConfigField("String", "BASE_URL", "\"https://api-dev.miformacionctma.com/\"")
+        }
+        create("stage") {
+            dimension = "environment"
+            applicationIdSuffix = ".stage"
+            buildConfigField("String", "BASE_URL", "\"https://api-stage.miformacionctma.com/\"")
+        }
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "BASE_URL", "\"https://api.miformacionctma.com/\"")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -39,10 +62,6 @@ android {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
-    }
-
-    buildFeatures {
-        compose = true
     }
 }
 

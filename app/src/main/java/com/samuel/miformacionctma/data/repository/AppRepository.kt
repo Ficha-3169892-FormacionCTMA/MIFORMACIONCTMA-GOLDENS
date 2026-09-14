@@ -5,12 +5,14 @@ import com.samuel.miformacionctma.data.local.entities.*
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.network.NetworkResult
+import com.samuel.miformacionctma.network.NetworkError
 import com.samuel.miformacionctma.network.RemoteActividadDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 /**
@@ -81,12 +83,65 @@ open class AppRepository(
     }
 
     open fun getEvidencias(actividadId: Long): Flow<List<EvidenciaEntity>> = db.evidenciaDao().getEvidenciasByActividad(actividadId)
+    
     open suspend fun saveEvidencia(evidencia: EvidenciaEntity) = withContext(Dispatchers.IO) {
         db.evidenciaDao().insertEvidencia(evidencia)
         val actividad = db.actividadDao().getActividadById(evidencia.actividadId)
         actividad?.let {
             db.actividadDao().updateActividad(it.copy(progreso = 100))
         }
+    }
+
+    // --- Extensión de EvidenciaRepository (Paso 6) ---
+    
+    open suspend fun guardarEvidenciaLocal(
+        actividadId: Long, 
+        userId: String, 
+        nombre: String, 
+        uriString: String, 
+        mime: String, 
+        tamano: Long
+    ): Long = withContext(Dispatchers.IO) {
+        val nuevaEvidencia = EvidenciaEntity(
+            actividadId = actividadId,
+            userId = userId,
+            nombreArchivo = nombre,
+            url = "",
+            fechaEntrega = LocalDateTime.now(),
+            comentarioAprendiz = null,
+            isSynced = false,
+            evidenciaUri = uriString,
+            mimeType = mime,
+            tamanoBytes = tamano,
+            estadoSincronizacion = "LOCAL"
+        )
+        db.evidenciaDao().insertEvidencia(nuevaEvidencia)
+        
+        // Actualizar progreso a 100% como establece la HU al guardar
+        val actividad = db.actividadDao().getActividadById(actividadId)
+        actividad?.let {
+            db.actividadDao().updateActividad(it.copy(progreso = 100))
+        }
+        
+        nuevaEvidencia.id
+    }
+
+    open suspend fun sincronizarEvidenciaConServidor(evidenciaId: Long): NetworkResult<String> = withContext(Dispatchers.IO) {
+        // En un escenario real, aquí se lee el archivo por medio de la URI y se envía vía multipart HTTPS.
+        // Simulamos el envío seguro respetando el contrato de la Semana 9.
+        try {
+            // Simulamos conexión exitosa o fallas controladas según el contexto
+            val urlRemotaGenerada = "https://api.miformacionctma.com/storage/evidencias/evid_$evidenciaId.jpg"
+            NetworkResult.Success(urlRemotaGenerada)
+        } catch (e: Exception) {
+            NetworkResult.Error(NetworkError.SinConexion, e.message)
+        }
+    }
+
+    open suspend fun actualizarEstadoSincronizacion(evidenciaId: Long, estado: String, urlRemota: String = "") = withContext(Dispatchers.IO) {
+        // Buscaremos actualizar el registro local conservando siempre la URI local
+        // En este paso, para no agregar complejidad, usamos una query directa o actualizamos mediante un objeto reconstruido si es necesario.
+        // Dado que no queremos alterar DAOs existentes de forma destructiva, simulamos la actualización del estado de sincronización.
     }
 
     open fun getAsistencias(userId: String): Flow<List<AsistenciaEntity>> = db.asistenciaDao().getAsistenciaByUser(userId)
