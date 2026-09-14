@@ -10,5 +10,6 @@ data class Bitacora(
     val fecha: LocalDate = LocalDate.now(),
     val titulo: String,
     val contenido: String,
-    val horas: Int
+    val horas: Int,
+    val syncStatus: SyncStatus = SyncStatus.SINCRONIZADO
 )

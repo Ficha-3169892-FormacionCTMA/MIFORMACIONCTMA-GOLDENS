@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samuel.miformacionctma.model.SyncStatus
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.components.OfflineIndicator
 
@@ -80,7 +81,7 @@ fun BitacoraScreen(viewModel: AppViewModel) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(text = bitacora.fecha.toString(), style = MaterialTheme.typography.labelSmall)
-                                if (!bitacora.isSynced) OfflineIndicator()
+                                if (bitacora.syncStatus != SyncStatus.SINCRONIZADO) OfflineIndicator()
                             }
                             Text(text = bitacora.titulo, fontWeight = FontWeight.Bold)
                             Text(text = bitacora.contenido, style = MaterialTheme.typography.bodySmall)

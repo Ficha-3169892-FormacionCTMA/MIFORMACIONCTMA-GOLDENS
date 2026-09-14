@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
+import com.samuel.miformacionctma.model.SyncStatus
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.components.OfflineIndicator
 import java.io.File
@@ -285,16 +286,15 @@ fun DetalleActividadScreen(id: Long, viewModel: AppViewModel, navController: Nav
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(text = evidencia.fechaEntrega.toString().replace("T", " "), style = MaterialTheme.typography.labelSmall)
                                 Badge(
-                                    containerColor = when(evidencia.estadoSincronizacion) {
-                                        "SINCRONIZADA" -> Color(0xFF39A900)
-                                        "SUBIENDO" -> Color(0xFFFFF3CD)
-                                        "FALLIDA" -> Color.Red
-                                        else -> Color.Gray
+                                    containerColor = when(evidencia.syncStatus) {
+                                        SyncStatus.SINCRONIZADO -> Color(0xFF39A900)
+                                        SyncStatus.PENDIENTE_CREAR, SyncStatus.PENDIENTE_ACTUALIZAR -> Color(0xFFFFF3CD)
+                                        SyncStatus.PENDIENTE_ELIMINAR -> Color.Red
                                     }
                                 ) {
-                                    Text(evidencia.estadoSincronizacion, color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                    Text(evidencia.syncStatus.name, color = if(evidencia.syncStatus == SyncStatus.SINCRONIZADO) Color.White else Color.Black, style = MaterialTheme.typography.labelSmall)
                                 }
-                                if (!evidencia.isSynced) OfflineIndicator()
+                                if (evidencia.syncStatus != SyncStatus.SINCRONIZADO) OfflineIndicator()
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text = "Archivo: " + evidencia.nombreArchivo, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
@@ -303,7 +303,7 @@ fun DetalleActividadScreen(id: Long, viewModel: AppViewModel, navController: Nav
                                 Text(text = "URL Remota: " + evidencia.url, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                             }
                             
-                            if (evidencia.estadoSincronizacion == "FALLIDA") {
+                            if (evidencia.syncStatus == SyncStatus.PENDIENTE_CREAR && evidencia.url.isEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(
                                     onClick = { viewModel.reintentarSincronizacionEvidencia(evidencia.id) },

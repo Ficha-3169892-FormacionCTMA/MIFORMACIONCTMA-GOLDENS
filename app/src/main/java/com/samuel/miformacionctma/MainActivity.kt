@@ -6,18 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.AppViewModelFactory
+import com.samuel.miformacionctma.ui.AuthViewModel
 import com.samuel.miformacionctma.ui.MainScreen
 import com.samuel.miformacionctma.ui.screens.LoginScreen
+import com.samuel.miformacionctma.ui.screens.RegisterScreen
 import com.samuel.miformacionctma.ui.theme.MiFormacionCTMATheme
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Typography
-import androidx.compose.material3.MaterialTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,13 +25,24 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
-            // Usamos la fábrica AppViewModelFactory para inyectar correctamente el AppContainer del Service Locator
-            val viewModel: AppViewModel = viewModel(
-                factory = AppViewModelFactory(context.applicationContext as Application)
+            val application = context.applicationContext as Application
+            
+            // ViewModel para la lógica general y estado de sesión
+            val appViewModel: AppViewModel = viewModel(
+                factory = AppViewModelFactory(application)
             )
-            val userId by viewModel.userId.collectAsState()
-            val themeMode by viewModel.themeMode.collectAsState()
-            val fontSizeScale by viewModel.fontSizeScale.collectAsState()
+            
+            // ViewModel para el flujo de autenticación (Login/Registro)
+            val authViewModel: AuthViewModel = viewModel(
+                factory = AppViewModelFactory(application)
+            )
+
+            val userId by appViewModel.userId.collectAsState()
+            val themeMode by appViewModel.themeMode.collectAsState()
+            val fontSizeScale by appViewModel.fontSizeScale.collectAsState()
+
+            // Estado de navegación local para alternar entre Login y Registro
+            var showRegister by remember { mutableStateOf(false) }
 
             val isDarkTheme = when (themeMode) {
                 "LIGHT" -> false
@@ -56,12 +67,29 @@ class MainActivity : ComponentActivity() {
             )
 
             MiFormacionCTMATheme(darkTheme = isDarkTheme) {
-                // Aplicar tipografía personalizada envolviendo el contenido
                 MaterialTheme(typography = customTypography) {
                     if (userId == null) {
-                        LoginScreen(viewModel)
+                        // Flujo de Autenticación
+                        if (showRegister) {
+                            RegisterScreen(
+                                viewModel = authViewModel,
+                                onNavigateToLogin = { 
+                                    authViewModel.resetState()
+                                    showRegister = false 
+                                }
+                            )
+                        } else {
+                            LoginScreen(
+                                viewModel = authViewModel,
+                                onNavigateToRegister = { 
+                                    authViewModel.resetState()
+                                    showRegister = true 
+                                }
+                            )
+                        }
                     } else {
-                        MainScreen(viewModel)
+                        // App principal (ya autenticado)
+                        MainScreen(appViewModel)
                     }
                 }
             }

@@ -15,5 +15,6 @@ data class ActividadEntity(
     val progreso: Int,
     val prioridad: Prioridad,
     val instructorId: String,
-    val isSynced: Boolean = true
+    val isSynced: Boolean = true,
+    val syncStatus: String = "SINCRONIZADO" // PENDIENTE_CREAR, PENDIENTE_ACTUALIZAR, PENDIENTE_ELIMINAR, SINCRONIZADO
 )

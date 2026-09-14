@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.samuel.miformacionctma.model.SyncStatus
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.components.OfflineIndicator
 
@@ -91,7 +92,7 @@ fun AsistenciaScreen(viewModel: AppViewModel, navController: NavController) {
                         supportingContent = { Text(registro.observacion ?: "Sin observaciones") },
                         trailingContent = { 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (!registro.isSynced) OfflineIndicator()
+                                if (registro.syncStatus != SyncStatus.SINCRONIZADO) OfflineIndicator()
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (registro.estuvoPresente) "PRESENTE" else "INASISTENCIA",

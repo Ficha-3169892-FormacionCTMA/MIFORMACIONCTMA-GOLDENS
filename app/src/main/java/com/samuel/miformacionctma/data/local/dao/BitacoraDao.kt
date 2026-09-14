@@ -12,7 +12,7 @@ interface BitacoraDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBitacora(bitacora: BitacoraEntity)
 
-    @Query("SELECT * FROM bitacoras WHERE isSynced = 0")
+    @Query("SELECT * FROM bitacoras WHERE syncStatus != 'SINCRONIZADO'")
     suspend fun getUnsyncedBitacoras(): List<BitacoraEntity>
 
     @Update

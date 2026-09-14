@@ -1,6 +1,8 @@
 package com.samuel.miformacionctma.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,34 +16,38 @@ import com.samuel.miformacionctma.ui.AuthUiState
 import com.samuel.miformacionctma.ui.AuthViewModel
 
 @Composable
-fun LoginScreen(
+fun RegisterScreen(
     viewModel: AuthViewModel,
-    onNavigateToRegister: () -> Unit
+    onNavigateToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("aprendiz") }
+    
     val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Mi Formación CTMA",
+            text = "Crear Cuenta",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF39A900)
         )
         Text(
-            text = "Centro de Tecnología de la Manufactura",
+            text = "Mi Formación CTMA",
             fontSize = 14.sp,
             color = Color.Gray
         )
-        
-        Spacer(modifier = Modifier.height(48.dp))
+
+        Spacer(modifier = Modifier.height(32.dp))
 
         if (uiState is AuthUiState.Error) {
             Text(
@@ -54,7 +60,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Correo SENA") },
+            label = { Text("Correo institucional (@sena.edu.co)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -70,10 +76,35 @@ fun LoginScreen(
             singleLine = true
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirmar Contraseña") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Selecciona tu rol:", modifier = Modifier.align(Alignment.Start))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(selected = role == "aprendiz", onClick = { role = "aprendiz" })
+            Text("Aprendiz")
+            Spacer(modifier = Modifier.width(16.dp))
+            RadioButton(selected = role == "instructor", onClick = { role = "instructor" })
+            Text("Instructor")
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { viewModel.login(email, password) },
+            onClick = { viewModel.register(email, password, confirmPassword, role) },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF39A900)),
             enabled = uiState !is AuthUiState.Loading
@@ -81,14 +112,12 @@ fun LoginScreen(
             if (uiState is AuthUiState.Loading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
             } else {
-                Text("INGRESAR")
+                Text("REGISTRARSE")
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextButton(onClick = onNavigateToRegister) {
-            Text("¿No tienes cuenta? Regístrate aquí")
+        TextButton(onClick = onNavigateToLogin) {
+            Text("¿Ya tienes cuenta? Inicia sesión")
         }
     }
 }

@@ -11,5 +11,9 @@ data class Evidencia(
     val nombreArchivo: String,
     val url: String,
     val fechaEntrega: LocalDateTime = LocalDateTime.now(),
-    val comentarioAprendiz: String? = null
+    val comentarioAprendiz: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.SINCRONIZADO,
+    val evidenciaUri: String = "",
+    val mimeType: String = "",
+    val tamanoBytes: Long = 0L
 )

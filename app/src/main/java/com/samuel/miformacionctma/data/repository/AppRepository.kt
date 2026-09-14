@@ -2,8 +2,7 @@ package com.samuel.miformacionctma.data.repository
 
 import com.samuel.miformacionctma.data.local.AppDatabase
 import com.samuel.miformacionctma.data.local.entities.*
-import com.samuel.miformacionctma.model.ActividadFormativa
-import com.samuel.miformacionctma.model.Prioridad
+import com.samuel.miformacionctma.model.*
 import com.samuel.miformacionctma.network.NetworkResult
 import com.samuel.miformacionctma.network.NetworkError
 import com.samuel.miformacionctma.network.RemoteActividadDataSource
@@ -31,7 +30,8 @@ open class AppRepository(
         fechaFin = fechaFin,
         progreso = progreso,
         diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), fechaFin).toInt(),
-        prioridad = prioridad
+        prioridad = prioridad,
+        syncStatus = try { SyncStatus.valueOf(syncStatus) } catch(e: Exception) { SyncStatus.SINCRONIZADO }
     )
 
     private fun ActividadFormativa.toEntity(instructorId: String = "default_user") = ActividadEntity(
@@ -42,7 +42,38 @@ open class AppRepository(
         fechaFin = fechaFin,
         progreso = progreso,
         prioridad = prioridad,
-        instructorId = instructorId
+        instructorId = instructorId,
+        syncStatus = syncStatus.name
+    )
+
+    private fun AsistenciaEntity.toDomain() = Asistencia(
+        id = id,
+        fecha = fecha,
+        estuvoPresente = estuvoPresente,
+        observacion = observacion,
+        syncStatus = try { SyncStatus.valueOf(syncStatus) } catch(e: Exception) { SyncStatus.SINCRONIZADO }
+    )
+
+    private fun BitacoraEntity.toDomain() = Bitacora(
+        id = id,
+        fecha = fecha,
+        titulo = titulo,
+        contenido = contenido,
+        horas = horas,
+        syncStatus = try { SyncStatus.valueOf(syncStatus) } catch(e: Exception) { SyncStatus.SINCRONIZADO }
+    )
+
+    private fun EvidenciaEntity.toDomain() = Evidencia(
+        id = id,
+        actividadId = actividadId,
+        nombreArchivo = nombreArchivo,
+        url = url,
+        fechaEntrega = fechaEntrega,
+        comentarioAprendiz = comentarioAprendiz,
+        syncStatus = try { SyncStatus.valueOf(syncStatus) } catch(e: Exception) { SyncStatus.SINCRONIZADO },
+        evidenciaUri = evidenciaUri,
+        mimeType = mimeType,
+        tamanoBytes = tamanoBytes
     )
 
     open fun getActividadesStream(query: String = ""): Flow<List<ActividadFormativa>> {
@@ -70,30 +101,35 @@ open class AppRepository(
     }
     
     open suspend fun saveActividad(actividad: ActividadFormativa) = withContext(Dispatchers.IO) {
-        db.actividadDao().insertActividad(actividad.toEntity())
+        val entidadConSync = actividad.toEntity().copy(syncStatus = SyncStatus.PENDIENTE_CREAR.name)
+        db.actividadDao().insertActividad(entidadConSync)
     }
 
     open suspend fun deleteActividad(actividad: ActividadFormativa) = withContext(Dispatchers.IO) {
-        db.actividadDao().deleteActividad(actividad.toEntity())
+        val entidadConSync = actividad.toEntity().copy(syncStatus = SyncStatus.PENDIENTE_ELIMINAR.name)
+        db.actividadDao().updateActividad(entidadConSync)
     }
 
-    open fun getBitacoras(userId: String): Flow<List<BitacoraEntity>> = db.bitacoraDao().getBitacorasByUser(userId)
+    open fun getBitacoras(userId: String): Flow<List<Bitacora>> = 
+        db.bitacoraDao().getBitacorasByUser(userId).map { list -> list.map { it.toDomain() } }
+    
     open suspend fun saveBitacora(bitacora: BitacoraEntity) = withContext(Dispatchers.IO) {
-        db.bitacoraDao().insertBitacora(bitacora)
+        val bitacoraConSync = bitacora.copy(syncStatus = SyncStatus.PENDIENTE_CREAR.name)
+        db.bitacoraDao().insertBitacora(bitacoraConSync)
     }
 
-    open fun getEvidencias(actividadId: Long): Flow<List<EvidenciaEntity>> = db.evidenciaDao().getEvidenciasByActividad(actividadId)
+    open fun getEvidencias(actividadId: Long): Flow<List<Evidencia>> = 
+        db.evidenciaDao().getEvidenciasByActividad(actividadId).map { list -> list.map { it.toDomain() } }
     
     open suspend fun saveEvidencia(evidencia: EvidenciaEntity) = withContext(Dispatchers.IO) {
-        db.evidenciaDao().insertEvidencia(evidencia)
+        val evidenciaConSync = evidencia.copy(syncStatus = SyncStatus.PENDIENTE_CREAR.name)
+        db.evidenciaDao().insertEvidencia(evidenciaConSync)
         val actividad = db.actividadDao().getActividadById(evidencia.actividadId)
         actividad?.let {
-            db.actividadDao().updateActividad(it.copy(progreso = 100))
+            db.actividadDao().updateActividad(it.copy(progreso = 100, syncStatus = SyncStatus.PENDIENTE_ACTUALIZAR.name))
         }
     }
 
-    // --- Extensión de EvidenciaRepository (Paso 6) ---
-    
     open suspend fun guardarEvidenciaLocal(
         actividadId: Long, 
         userId: String, 
@@ -113,25 +149,21 @@ open class AppRepository(
             evidenciaUri = uriString,
             mimeType = mime,
             tamanoBytes = tamano,
-            estadoSincronizacion = "LOCAL"
+            syncStatus = SyncStatus.PENDIENTE_CREAR.name
         )
         db.evidenciaDao().insertEvidencia(nuevaEvidencia)
         
-        // Actualizar progreso a 100% como establece la HU al guardar
         val actividad = db.actividadDao().getActividadById(actividadId)
         actividad?.let {
-            db.actividadDao().updateActividad(it.copy(progreso = 100))
+            db.actividadDao().updateActividad(it.copy(progreso = 100, syncStatus = SyncStatus.PENDIENTE_ACTUALIZAR.name))
         }
         
         nuevaEvidencia.id
     }
 
     open suspend fun sincronizarEvidenciaConServidor(evidenciaId: Long): NetworkResult<String> = withContext(Dispatchers.IO) {
-        // En un escenario real, aquí se lee el archivo por medio de la URI y se envía vía multipart HTTPS.
-        // Simulamos el envío seguro respetando el contrato de la Semana 9.
         try {
-            // Simulamos conexión exitosa o fallas controladas según el contexto
-            val urlRemotaGenerada = "https://api.miformacionctma.com/storage/evidencias/evid_$evidenciaId.jpg"
+            val urlRemotaGenerada = "https://xyzcompany.supabase.co/storage/v1/object/public/evidencias/dummy_$evidenciaId.jpg"
             NetworkResult.Success(urlRemotaGenerada)
         } catch (e: Exception) {
             NetworkResult.Error(NetworkError.SinConexion, e.message)
@@ -139,18 +171,21 @@ open class AppRepository(
     }
 
     open suspend fun actualizarEstadoSincronizacion(evidenciaId: Long, estado: String, urlRemota: String = "") = withContext(Dispatchers.IO) {
-        // Buscaremos actualizar el registro local conservando siempre la URI local
-        // En este paso, para no agregar complejidad, usamos una query directa o actualizamos mediante un objeto reconstruido si es necesario.
-        // Dado que no queremos alterar DAOs existentes de forma destructiva, simulamos la actualización del estado de sincronización.
+        val evidencia = db.evidenciaDao().getEvidenciaById(evidenciaId)
+        evidencia?.let {
+            db.evidenciaDao().updateEvidencia(it.copy(syncStatus = estado, url = if(urlRemota.isNotEmpty()) urlRemota else it.url))
+        }
     }
 
-    open fun getAsistencias(userId: String): Flow<List<AsistenciaEntity>> = db.asistenciaDao().getAsistenciaByUser(userId)
+    open fun getAsistencias(userId: String): Flow<List<Asistencia>> = 
+        db.asistenciaDao().getAsistenciaByUser(userId).map { list -> list.map { it.toDomain() } }
+    
     open suspend fun registrarAsistencia(userId: String, estuvopresente: Boolean, observacion: String?) = withContext(Dispatchers.IO) {
         val hoy = LocalDate.now()
         val existe = db.asistenciaDao().getAsistenciaByDate(userId, hoy.toString())
         if (existe == null) {
             db.asistenciaDao().insertAsistencia(
-                AsistenciaEntity(userId = userId, fecha = hoy, estuvoPresente = estuvopresente, observacion = observacion)
+                AsistenciaEntity(userId = userId, fecha = hoy, estuvoPresente = estuvopresente, observacion = observacion, syncStatus = SyncStatus.PENDIENTE_CREAR.name)
             )
         }
     }

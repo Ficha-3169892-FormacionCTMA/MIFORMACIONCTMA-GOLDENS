@@ -12,8 +12,11 @@ interface EvidenciaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvidencia(evidencia: EvidenciaEntity)
 
-    @Query("SELECT * FROM evidencias WHERE isSynced = 0")
+    @Query("SELECT * FROM evidencias WHERE syncStatus != 'SINCRONIZADO'")
     suspend fun getUnsyncedEvidencias(): List<EvidenciaEntity>
+
+    @Query("SELECT * FROM evidencias WHERE id = :id")
+    suspend fun getEvidenciaById(id: Long): EvidenciaEntity?
 
     @Update
     suspend fun updateEvidencia(evidencia: EvidenciaEntity)

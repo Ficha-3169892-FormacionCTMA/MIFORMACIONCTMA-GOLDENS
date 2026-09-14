@@ -20,6 +20,7 @@ import java.time.LocalDateTime
 )
 data class EvidenciaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val remoteId: Long? = null,
     val actividadId: Long,
     val userId: String,
     val nombreArchivo: String,
@@ -27,10 +28,8 @@ data class EvidenciaEntity(
     val fechaEntrega: LocalDateTime,
     val comentarioAprendiz: String?,
     val isSynced: Boolean = false,
-    
-    // Campos añadidos en Semana 9 (Principio de Mínimo Privilegio - No se almacena la imagen en binario)
     val evidenciaUri: String = "",
     val mimeType: String = "",
     val tamanoBytes: Long = 0L,
-    val estadoSincronizacion: String = "LOCAL" // LOCAL, SUBIENDO, SINCRONIZADA, FALLIDA
+    val syncStatus: String = "PENDIENTE_CREAR" // PENDIENTE_CREAR, SINCRONIZADO
 )

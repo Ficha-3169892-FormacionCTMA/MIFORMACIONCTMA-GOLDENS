@@ -9,5 +9,6 @@ data class Asistencia(
     val id: Long = 0,
     val fecha: LocalDate = LocalDate.now(),
     val estuvoPresente: Boolean = true,
-    val observacion: String? = null
+    val observacion: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.SINCRONIZADO
 )

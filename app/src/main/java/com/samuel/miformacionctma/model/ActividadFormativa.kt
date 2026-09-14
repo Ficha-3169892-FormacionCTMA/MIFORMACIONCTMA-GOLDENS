@@ -10,7 +10,8 @@ data class ActividadFormativa(
     val fechaFin: LocalDate,
     val progreso: Int,
     val diasRestantes: Int,
-    val prioridad: Prioridad
+    val prioridad: Prioridad,
+    val syncStatus: SyncStatus = SyncStatus.SINCRONIZADO
 ) {
     init {
         require(titulo.isNotBlank()) { "El título no puede estar vacío" }

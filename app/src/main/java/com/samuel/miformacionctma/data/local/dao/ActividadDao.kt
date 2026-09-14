@@ -15,6 +15,9 @@ interface ActividadDao {
     @Query("SELECT * FROM actividades WHERE id = :id")
     suspend fun getActividadById(id: Long): ActividadEntity?
 
+    @Query("SELECT * FROM actividades WHERE syncStatus != 'SINCRONIZADO'")
+    suspend fun getUnsyncedActividades(): List<ActividadEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertActividades(actividades: List<ActividadEntity>)
 

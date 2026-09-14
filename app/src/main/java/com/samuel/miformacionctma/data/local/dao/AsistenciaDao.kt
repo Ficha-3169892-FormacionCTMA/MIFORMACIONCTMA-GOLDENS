@@ -15,7 +15,7 @@ interface AsistenciaDao {
     @Query("SELECT * FROM asistencia WHERE userId = :userId AND fecha = :fecha LIMIT 1")
     suspend fun getAsistenciaByDate(userId: String, fecha: String): AsistenciaEntity?
 
-    @Query("SELECT * FROM asistencia WHERE isSynced = 0")
+    @Query("SELECT * FROM asistencia WHERE syncStatus != 'SINCRONIZADO'")
     suspend fun getUnsyncedAsistencia(): List<AsistenciaEntity>
 
     @Update
