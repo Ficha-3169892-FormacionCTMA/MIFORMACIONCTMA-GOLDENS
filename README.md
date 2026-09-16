@@ -147,3 +147,7 @@ Ejecutar `./gradlew test` para validar la lógica de negocio y la integración c
 ---
 
 > **Nota Técnica:** Este proyecto utiliza estándares modernos de Android (UDF, Offline-First). Se utilizó asistencia de IA para la generación de mappers, optimización de flujos reactivos y resolución de errores de compilación y deprecaciones en la UI.
+
+para ejecutar todos los test:
+
+./gradlew :app:testAllUnitTests

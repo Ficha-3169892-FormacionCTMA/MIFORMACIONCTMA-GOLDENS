@@ -25,9 +25,9 @@ class ActividadValidationTest(
 
     @Test
     fun `validar que el progreso siempre este entre 0 y 100`() {
-        val actividad = createActividadDominio(progreso = inputProgreso)
-        // Simulamos la lógica que debería estar en el modelo o un use case
-        val progresoValidado = actividad.progreso.coerceIn(0, 100)
-        assertEquals(expectedProgreso, progresoValidado)
+        // Coercemos el progreso antes de instanciar el modelo para cumplir con sus restricciones de init
+        val progresoValidado = inputProgreso.coerceIn(0, 100)
+        val actividad = createActividadDominio(progreso = progresoValidado)
+        assertEquals(expectedProgreso, actividad.progreso)
     }
 }
