@@ -1,5 +1,6 @@
 package com.samuel.miformacionctma
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samuel.miformacionctma.ui.AppViewModel
+import com.samuel.miformacionctma.ui.AppViewModelFactory
 import com.samuel.miformacionctma.ui.MainScreen
 import com.samuel.miformacionctma.ui.screens.LoginScreen
 import com.samuel.miformacionctma.ui.theme.MiFormacionCTMATheme
@@ -22,7 +24,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val viewModel: AppViewModel = viewModel()
+            val context = LocalContext.current
+            // Usamos la fábrica AppViewModelFactory para inyectar correctamente el AppContainer del Service Locator
+            val viewModel: AppViewModel = viewModel(
+                factory = AppViewModelFactory(context.applicationContext as Application)
+            )
             val userId by viewModel.userId.collectAsState()
             val themeMode by viewModel.themeMode.collectAsState()
             val fontSizeScale by viewModel.fontSizeScale.collectAsState()

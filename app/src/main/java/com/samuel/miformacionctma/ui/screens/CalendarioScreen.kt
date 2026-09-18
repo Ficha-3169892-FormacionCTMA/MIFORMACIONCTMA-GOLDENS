@@ -18,7 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.ui.AppViewModel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -28,7 +30,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarioScreen(viewModel: AppViewModel, navController: NavController) {
-    val actividades by viewModel.actividades.collectAsState()
+    val actividades by viewModel.actividades.collectAsStateWithLifecycle()
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
@@ -84,8 +86,7 @@ fun CalendarHeader(currentMonth: YearMonth, onMonthChange: (YearMonth) -> Unit) 
     Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+        verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onMonthChange(currentMonth.minusMonths(1)) }) {
             Icon(Icons.Default.ChevronLeft, contentDescription = "Mes Anterior")
         }
@@ -104,7 +105,7 @@ fun CalendarHeader(currentMonth: YearMonth, onMonthChange: (YearMonth) -> Unit) 
 fun CalendarGrid(
     currentMonth: YearMonth,
     selectedDate: LocalDate,
-    actividades: List<com.samuel.miformacionctma.data.local.entities.ActividadEntity>,
+    actividades: List<ActividadFormativa>,
     onDateSelected: (LocalDate) -> Unit
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()

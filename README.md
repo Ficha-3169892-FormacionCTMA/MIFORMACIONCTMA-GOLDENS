@@ -82,7 +82,7 @@ Actualmente los aprendices administran sus actividades, enlaces, evidencias y fe
 
 # Tecnologías utilizadas
 
-- Kotlin, Jetpack Compose, Clean Architecture, MVVM, UDF, Retrofit, OkHttp, MockWebServer, Espresso.
+- Kotlin, Jetpack Compose, Clean Architecture, MVVM, UDF, Coroutines, Flow, StateFlow, Room, DataStore, Retrofit 2, OkHttp 4, Gson, MockWebServer, Espresso.
 
 ---
 
@@ -91,5 +91,63 @@ Actualmente los aprendices administran sus actividades, enlaces, evidencias y fe
 ## Semana 5: Implementación Integral (Clean Architecture & UDF)
 - **Agile Coaching:** Definición y estructuración de 15 Historias de Usuario con estándares profesionales.
 - **Testing Estratégico:** Implementación de pruebas unitarias y de UI automatizadas para el flujo de Bitácora y Actividades.
-- **Documentación Técnica:** Creación de registros de Riesgos y Plan de Pruebas centralizado.
 - **Arquitectura Robusta:** Refactorización a Clean Architecture con manejo de estado unidireccional (UDF).
+
+## Semana 7: Concurrencia y Estado Reactivo
+- **Reactividad Total:** Implementación de `Flow` y `StateFlow` desde Room/DataStore hasta la UI.
+- **Main-Safety:** Migración de toda la lógica de persistencia a `Dispatchers.IO` en el Repositorio, garantizando que el hilo principal nunca se bloquee.
+- **Gestión de UI State:** Implementación de `sealed interfaces` para estados complejos de carga, contenido, error y validación de operaciones asíncronas.
+- **Optimización de Búsqueda:** Uso de `flatMapLatest` y `debounce` para realizar consultas eficientes y cancelar peticiones obsoletas.
+
+## Semana 8: Integración con Servicio REST (Actual)
+- **Capa de Red:** Integración de Retrofit con interceptores de seguridad para tokens `Bearer`.
+- **Estrategia Offline-First:** Implementación de la "Regla de Oro": API -> DTO -> Mapeo -> Room -> Flow -> UI. El caché local es la fuente única de verdad.
+- **Resiliencia:** Clasificación detallada de errores de red (401, 404, Timeout) sin interrumpir el acceso a datos locales.
+- **Sincronización:** Implementación de refresco manual e indicadores de estado de red con marcas de tiempo de última actualización.
+
+---
+
+## 🏗️ Arquitectura y Red (Semana 8)
+
+La aplicación sigue un flujo de datos unidireccional donde la base de datos local (Room) actúa como fuente única de verdad para la UI.
+
+### 🚀 Contrato de la API
+| Método | Endpoint | Descripción |
+|:---|:---|:---|
+| **GET** | `/v1/actividades` | Sincroniza todas las actividades con el caché local. |
+| **GET** | `/v1/actividades/{id}` | Obtiene detalle remoto de una actividad específica. |
+| **POST** | `/v1/actividades` | Registra una nueva actividad en el servidor. |
+| **PUT** | `/v1/actividades/{id}` | Actualiza el estado o progreso de una actividad. |
+
+### 🔒 Decisiones de Seguridad y Caché
+- **Inyección de Token:** Se utiliza un `TokenProvider` y un Interceptor de OkHttp para adjuntar la cabecera `Authorization: Bearer <token>` de forma transparente.
+- **Privacidad de Logs:** Configuración de niveles de log para no exponer tokens ni información sensible en Logcat.
+- **Persistencia Atómica:** Las respuestas exitosas de la API se guardan en Room; los errores remotos no reemplazan ni eliminan el caché existente.
+
+---
+
+## ✅ Casos de Aceptación (Semana 8)
+
+| ID | Caso de Prueba | Resultado |
+|:---|:---|:---:|
+| **CA-01** | Respuesta 200 OK con actividades | **PASÓ** (Room se actualiza y la UI refleja los cambios) |
+| **CA-02** | Respuesta 200 OK con arreglo vacío | **PASÓ** (Se trata como vacío válido, no error) |
+| **CA-03** | Timeout con caché existente | **PASÓ** (Caché permanece visible, banner de error) |
+| **CA-04** | Sin red y sin caché previo | **PASÓ** (Estado de error recuperable con botón Sincronizar) |
+| **CA-05** | Error 401 (No Autorizado) | **PASÓ** (Pide renovar sesión de forma segura) |
+| **CA-06** | Error 500 o JSON inválido | **PASÓ** (Error clasificado, Room conserva datos previos) |
+| **CA-07** | Refresh rápidos consecutivos | **PASÓ** (Sin corrupción ni estados imposibles) |
+| **CA-08** | Cancelación del ViewModel | **PASÓ** (La petición de red se cancela al salir de la pantalla) |
+
+---
+
+## 🧪 Cómo correr las pruebas
+Ejecutar `./gradlew test` para validar la lógica de negocio y la integración con servidores simulados mediante MockWebServer.
+
+---
+
+> **Nota Técnica:** Este proyecto utiliza estándares modernos de Android (UDF, Offline-First). Se utilizó asistencia de IA para la generación de mappers, optimización de flujos reactivos y resolución de errores de compilación y deprecaciones en la UI.
+
+para ejecutar todos los test:
+
+./gradlew :app:testAllUnitTests

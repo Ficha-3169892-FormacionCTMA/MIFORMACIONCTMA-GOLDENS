@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.components.OfflineIndicator
@@ -20,7 +21,7 @@ import com.samuel.miformacionctma.ui.components.OfflineIndicator
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AsistenciaScreen(viewModel: AppViewModel, navController: NavController) {
-    val asistencias by viewModel.asistencias.collectAsState()
+    val asistencias by viewModel.asistencias.collectAsStateWithLifecycle()
     var showMockScanner by remember { mutableStateOf(false) }
     var mockQrCode by remember { mutableStateOf("") }
 

@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -17,6 +18,29 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    flavorDimensions.add("environment")
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            buildConfigField("String", "BASE_URL", "\"https://api-dev.miformacionctma.com/\"")
+        }
+        create("stage") {
+            dimension = "environment"
+            applicationIdSuffix = ".stage"
+            buildConfigField("String", "BASE_URL", "\"https://api-stage.miformacionctma.com/\"")
+        }
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "BASE_URL", "\"https://api.miformacionctma.com/\"")
+        }
     }
 
     buildTypes {
@@ -39,10 +63,6 @@ android {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-
-    buildFeatures {
-        compose = true
-    }
 }
 
 kotlin {
@@ -52,6 +72,8 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
     // Jetpack Compose
@@ -60,7 +82,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended) // Añadido para resolver iconos faltantes
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
 
     // Networking
@@ -80,13 +102,23 @@ dependencies {
     // Tests
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 
     // Debug
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+tasks.register("testAllUnitTests") {
+    group = "verification"
+    description = "Ejecuta los tests unitarios de las variantes dev, stage y prod en modo debug."
+    dependsOn("testDevDebugUnitTest", "testStageDebugUnitTest", "testProdDebugUnitTest")
 }
