@@ -3,20 +3,27 @@ package com.samuel.miformacionctma.ui
 import android.app.Application
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.samuel.miformacionctma.di.AppContainer
 import com.samuel.miformacionctma.data.local.entities.*
 import com.samuel.miformacionctma.data.preferences.UserPreferencesRepository
 import com.samuel.miformacionctma.data.repository.AppRepository
+import com.samuel.miformacionctma.data.repository.InstructorStats
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.network.*
+import com.samuel.miformacionctma.sync.SyncWorker
 import com.samuel.miformacionctma.ui.screens.MediaSelectorState
+import com.samuel.miformacionctma.util.EstadoActividad
+import com.samuel.miformacionctma.util.UserRoles
+import com.samuel.miformacionctma.util.calcularEstadoActividad
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -32,6 +39,7 @@ class AppViewModel(
     val userId = userPrefs.userId.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val userRole = userPrefs.userRole.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val userName = userPrefs.userName.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val userEmail = userPrefs.userEmail.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val themeMode = userPrefs.themeMode.stateIn(viewModelScope, SharingStarted.Eagerly, "SYSTEM")
     val fontSizeScale = userPrefs.fontSizeScale.stateIn(viewModelScope, SharingStarted.Eagerly, "MEDIUM")
     val notificacionesEnabled = userPrefs.notificacionesEnabled.stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -52,7 +60,6 @@ class AppViewModel(
     private val _lastUpdate = MutableStateFlow<LocalDateTime?>(null)
     val lastUpdate = _lastUpdate.asStateFlow()
 
-    // --- Estado para el flujo de captura/selección multimedia (Semana 9) ---
     private val _selectedMedia = MutableStateFlow<MediaSelectorState?>(null)
     val selectedMedia = _selectedMedia.asStateFlow()
 
@@ -104,26 +111,71 @@ class AppViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
+    val novedadesRecibidas = userId.flatMapLatest { id ->
+        if (id != null) repository.getNovedadesRecibidas(id) else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     val certificados = userId.flatMapLatest { id ->
         if (id != null) repository.getCertificados(id) else flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val dashboardStats = repository.getActividadesStream("").map { list ->
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val asignaciones = userId.flatMapLatest { id ->
+        if (id != null) repository.getAsignacionesByAprendiz(id) else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val actividadesConEstado: StateFlow<List<Pair<ActividadFormativa, EstadoActividad>>> = repository.getActividadesStream("")
+        .combine(asignaciones) { listaActividades, listaAsignaciones ->
+            val mapaAsignaciones = listaAsignaciones.associateBy { it.actividadId }
+            listaActividades.map { actividad ->
+                val asignacion = actividad.remoteId?.let { mapaAsignaciones[it] }
+                val estado = calcularEstadoActividad(actividad.fechaFin, asignacion)
+                Pair(actividad, estado)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val dashboardStats: StateFlow<DashboardData> = actividadesConEstado.map { list ->
         val total = list.size
-        val completadas = list.count { it.progreso == 100 }
-        val enProceso = list.count { it.progreso in 1..99 }
-        val pendientes = list.count { it.progreso == 0 }
-        val vencidas = list.count { it.fechaFin.isBefore(LocalDate.now()) && it.progreso < 100 }
-        val progresoGral = if (total > 0) (list.sumOf { it.progreso }.toDouble() / total).toInt() else 0
-        
-        DashboardData(total, completadas, enProceso, pendientes, vencidas, progresoGral)
+        val completadas = list.count { it.second == EstadoActividad.COMPLETADA }
+        val fallidas = list.count { it.second == EstadoActividad.FALLIDA }
+        val enRevision = list.count { it.second == EstadoActividad.EN_REVISION }
+        val vencidas = list.count { it.second == EstadoActividad.VENCIDA }
+        val pendientes = list.count { it.second == EstadoActividad.PENDIENTE }
+        val progresoGral = if (total > 0) ((completadas.toDouble() / total) * 100).toInt() else 0
+
+        DashboardData(
+            totalActividades = total,
+            completadas = completadas,
+            enProceso = 0,
+            pendientes = pendientes,
+            vencidas = vencidas,
+            fallidas = fallidas,
+            enRevision = enRevision,
+            progresoGeneral = progresoGral
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardData())
+
+    private val _instructorStats = MutableStateFlow<InstructorStats?>(null)
+    val instructorStats: StateFlow<InstructorStats?> = _instructorStats.asStateFlow()
+
+    fun cargarEstadisticasInstructor() {
+        val currentUserId = userId.value ?: return
+        viewModelScope.launch {
+            val result = container.revisionRepository.getEstadisticasInstructor(currentUserId)
+            result.onSuccess { stats ->
+                _instructorStats.value = stats
+            }
+        }
+    }
 
     // --- Acciones del ViewModel ---
 
     fun cargarMediaDesdeUri(uri: Uri) {
-        val contentResolver = getApplication<Application>().contentResolver
-        var nombre = "Evidencia_${System.currentTimeMillis()}"
+        val app = getApplication<Application>()
+        val contentResolver = app.contentResolver
+        var nombre = "Evidencia_${System.currentTimeMillis()}.jpg"
         var size = 0L
         val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
         
@@ -132,7 +184,7 @@ class AppViewModel(
                 val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                 if (cursor.moveToFirst()) {
-                    if (nameIndex != -1) nombre = cursor.getString(nameIndex) ?: nombre
+                    if (nameIndex != -1) cursor.getString(nameIndex)?.let { nombre = it }
                     if (sizeIndex != -1) size = cursor.getLong(sizeIndex)
                 }
             }
@@ -144,13 +196,29 @@ class AppViewModel(
             _selectedMedia.value = MediaSelectorState(error = "Tipo de archivo no válido. Solo se admiten imágenes.")
             return
         }
+
+        val fileUri: Uri = try {
+            val dir = File(app.filesDir, "evidencias_locales")
+            if (!dir.exists()) dir.mkdirs()
+            val localFile = File(dir, "CAP_${System.currentTimeMillis()}.jpg")
+            contentResolver.openInputStream(uri)?.use { input ->
+                localFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            if (size == 0L) size = localFile.length()
+            Uri.fromFile(localFile)
+        } catch (e: Exception) {
+            uri
+        }
+
         if (size > 5 * 1024 * 1024) {
             _selectedMedia.value = MediaSelectorState(error = "El archivo excede el tamaño máximo permitido de 5MB")
             return
         }
 
         _selectedMedia.value = MediaSelectorState(
-            uri = uri,
+            uri = fileUri,
             nombre = nombre,
             mimeType = mimeType,
             tamanoBytes = size,
@@ -162,31 +230,24 @@ class AppViewModel(
         _selectedMedia.value = null
     }
 
-    fun guardarYEnviarEvidenciaMultimedia(actividadId: Long) {
+    fun guardarYEnviarEvidenciaMultimedia(actividadId: Long, comentario: String? = null) {
         val media = _selectedMedia.value ?: return
         if (media.error != null || media.uri == null) return
 
         viewModelScope.launch {
             try {
-                val evidenciaId = repository.guardarEvidenciaLocal(
+                repository.eliminarEvidenciaAnteriorYGuardarNueva(
                     actividadId = actividadId,
                     userId = userId.value ?: "unknown",
                     nombre = media.nombre,
                     uriString = media.uri.toString(),
                     mime = media.mimeType,
-                    tamano = media.tamanoBytes
+                    tamano = media.tamanoBytes,
+                    comentario = comentario
                 )
                 
                 _selectedMedia.value = null 
-                
-                when (val result = repository.sincronizarEvidenciaConServidor(evidenciaId)) {
-                    is NetworkResult.Success -> {
-                        repository.actualizarEstadoSincronizacion(evidenciaId, "SINCRONIZADA", result.data)
-                    }
-                    is NetworkResult.Error -> {
-                        repository.actualizarEstadoSincronizacion(evidenciaId, "FALLIDA")
-                    }
-                }
+                SyncWorker.triggerOneTimeSync(getApplication())
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
@@ -195,22 +256,28 @@ class AppViewModel(
         }
     }
 
+    fun actualizarComentarioEvidencia(evidenciaId: Long, actividadId: Long, nuevoComentario: String?) {
+        val currentUserId = userId.value ?: return
+        viewModelScope.launch {
+            repository.actualizarComentarioEvidencia(evidenciaId, actividadId, currentUserId, nuevoComentario)
+            SyncWorker.triggerOneTimeSync(getApplication())
+        }
+    }
+
     fun reintentarSincronizacionEvidencia(evidenciaId: Long) {
         viewModelScope.launch {
-            when (val result = repository.sincronizarEvidenciaConServidor(evidenciaId)) {
-                is NetworkResult.Success -> {
-                    repository.actualizarEstadoSincronizacion(evidenciaId, "SINCRONIZADA", result.data)
-                }
-                is NetworkResult.Error -> {
-                    repository.actualizarEstadoSincronizacion(evidenciaId, "FALLIDA")
-                }
-            }
+            SyncWorker.triggerOneTimeSync(getApplication())
         }
+    }
+
+    suspend fun getSignedUrlForEvidencia(storagePath: String): String {
+        return repository.getSignedUrlForEvidencia(storagePath)
     }
 
     fun refresh() {
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
+            SyncWorker.triggerOneTimeSync(getApplication())
             when (val result = repository.refreshActividades()) {
                 is NetworkResult.Success -> {
                     _operacionState.value = OperacionUiState.Exitosa
@@ -224,11 +291,20 @@ class AppViewModel(
     }
 
     fun addActividad(titulo: String, desc: String, fInicio: LocalDate, fFin: LocalDate, prior: Prioridad) {
+        val currentInstructorId = userId.value ?: ""
+        if (!UserRoles.isInstructor(userRole.value)) {
+            _operacionState.value = OperacionUiState.Fallida(
+                NetworkError.SinConexion,
+                "Solo los instructores pueden crear actividades"
+            )
+            return
+        }
+
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
             try {
                 val nuevaActividad = ActividadFormativa(
-                    id = System.currentTimeMillis(),
+                    id = 0L,
                     titulo = titulo,
                     descripcion = desc,
                     fechaInicio = fInicio,
@@ -237,7 +313,8 @@ class AppViewModel(
                     diasRestantes = 0,
                     prioridad = prior
                 )
-                repository.saveActividad(nuevaActividad)
+                repository.saveActividad(nuevaActividad, currentInstructorId)
+                SyncWorker.triggerOneTimeSync(getApplication())
                 _operacionState.value = OperacionUiState.Exitosa
             } catch (ce: CancellationException) {
                 throw ce
@@ -247,33 +324,66 @@ class AppViewModel(
         }
     }
 
-    fun deleteActividad(actividad: ActividadFormativa) {
+    fun deleteActividad(actividad: ActividadEntity) {
+        val currentUserId = userId.value ?: ""
+        if (!UserRoles.isInstructor(userRole.value) || actividad.instructorId != currentUserId) {
+            _operacionState.value = OperacionUiState.Fallida(
+                NetworkError.SinConexion,
+                "No puedes borrar esta actividad"
+            )
+            return
+        }
+
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
-            try {
-                repository.deleteActividad(actividad)
-                _operacionState.value = OperacionUiState.Exitosa
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (e: Exception) {
-                _operacionState.value = OperacionUiState.Fallida(NetworkError.Desconocido, e.message)
+            val result = repository.deleteActividad(actividad)
+            result.fold(
+                onSuccess = {
+                    _operacionState.value = OperacionUiState.Exitosa
+                },
+                onFailure = { error ->
+                    _operacionState.value = OperacionUiState.Fallida(
+                        NetworkError.Desconocido,
+                        error.message ?: "No puedes borrar esta actividad"
+                    )
+                }
+            )
+        }
+    }
+
+    fun deleteActividad(actividadFormativa: ActividadFormativa) {
+        viewModelScope.launch {
+            val entity = repository.getActividadEntityById(actividadFormativa.id)
+            if (entity != null) {
+                deleteActividad(entity)
+            } else {
+                _operacionState.value = OperacionUiState.Fallida(
+                    NetworkError.SinConexion,
+                    "No puedes borrar esta actividad"
+                )
             }
         }
     }
 
-    fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, adjunto: String?) {
+    fun addNovedad(tipo: String, motivo: String, fecha: LocalDate, fechaFin: LocalDate? = null, adjunto: String?) {
+        val currentUserId = userId.value ?: "unknown"
+        val currentRole = userRole.value ?: "aprendiz"
+        Log.d("DEBUG_NOVEDAD_ADD", "addNovedad: currentUserId=\"$currentUserId\", currentRole=\"$currentRole\", fecha=\"$fecha\"")
         viewModelScope.launch {
             _operacionState.value = OperacionUiState.EnCurso
             try {
                 repository.saveNovedad(
                     NovedadEntity(
-                        userId = userId.value ?: "unknown",
+                        userId = currentUserId,
                         tipo = tipo,
                         motivo = motivo,
                         fecha = fecha,
-                        documentoAdjunto = adjunto
+                        fechaFin = fechaFin,
+                        documentoAdjunto = adjunto,
+                        tipoAutor = currentRole
                     )
                 )
+                SyncWorker.triggerOneTimeSync(getApplication())
                 _operacionState.value = OperacionUiState.Exitosa
             } catch (ce: CancellationException) {
                 throw ce
@@ -284,22 +394,45 @@ class AppViewModel(
     }
 
     fun scanQRAsistencia(qrContent: String) {
+        val currentUserId = userId.value ?: return
         viewModelScope.launch {
-            repository.registrarAsistencia(userId.value ?: "", true, "QR: $qrContent")
+            repository.registrarAsistencia(currentUserId, true, "QR: $qrContent")
+            SyncWorker.triggerOneTimeSync(getApplication())
         }
     }
 
     fun addBitacora(titulo: String, contenido: String, horas: Int) {
+        val currentUserId = userId.value ?: return
         viewModelScope.launch {
             repository.saveBitacora(
                 BitacoraEntity(
-                    userId = userId.value ?: "",
+                    autorId = currentUserId,
                     fecha = LocalDate.now(),
                     titulo = titulo,
                     contenido = contenido,
                     horas = horas
                 )
             )
+            SyncWorker.triggerOneTimeSync(getApplication())
+        }
+    }
+
+    fun editarBitacora(id: Long, remoteId: Long?, fechaOriginal: LocalDate, titulo: String, contenido: String, horas: Int) {
+        val currentUserId = userId.value ?: return
+        viewModelScope.launch {
+            repository.updateBitacora(
+                BitacoraEntity(
+                    id = id,
+                    autorId = currentUserId,
+                    fecha = fechaOriginal,
+                    titulo = titulo,
+                    contenido = contenido,
+                    horas = horas,
+                    isSynced = false,
+                    remoteId = remoteId
+                )
+            )
+            SyncWorker.triggerOneTimeSync(getApplication())
         }
     }
 
@@ -315,6 +448,7 @@ class AppViewModel(
                     comentarioAprendiz = null
                 )
             )
+            SyncWorker.triggerOneTimeSync(getApplication())
         }
     }
 
@@ -338,14 +472,9 @@ class AppViewModel(
     fun updateFontSize(scale: String) { viewModelScope.launch { userPrefs.setFontSizeScale(scale) } }
     fun setNotificacionesEnabled(enabled: Boolean) { viewModelScope.launch { userPrefs.setNotificacionesEnabled(enabled) } }
 
-    fun login(email: String, role: String, name: String) {
-        viewModelScope.launch {
-            val id = email.split("@")[0]
-            userPrefs.saveUser(id, role, "MOCK_TOKEN", name)
-        }
-    }
-
     fun logout() {
-        viewModelScope.launch { userPrefs.clearUser() }
+        viewModelScope.launch {
+            container.authRepository.signOut()
+        }
     }
 }

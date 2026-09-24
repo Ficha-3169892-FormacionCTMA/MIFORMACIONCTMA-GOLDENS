@@ -11,7 +11,10 @@ data class NovedadEntity(
     val tipo: String, // "MEDICA", "PERMISO", "OTRA"
     val motivo: String,
     val fecha: LocalDate,
+    val fechaFin: LocalDate? = null,
     val documentoAdjunto: String?,
     val estado: String = "PENDIENTE", // "PENDIENTE", "REVISION", "APROBADA", "RECHAZADA"
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val remoteId: Long? = null,
+    val tipoAutor: String = "aprendiz"
 )

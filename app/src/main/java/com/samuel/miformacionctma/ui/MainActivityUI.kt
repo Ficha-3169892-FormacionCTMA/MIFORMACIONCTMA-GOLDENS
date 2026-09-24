@@ -1,5 +1,6 @@
 package com.samuel.miformacionctma.ui
 
+import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -8,14 +9,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.samuel.miformacionctma.ui.screens.*
+import com.samuel.miformacionctma.util.UserRoles
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     data object Dashboard : Screen("dashboard", "Inicio", Icons.Default.Dashboard)
     data object Actividades : Screen("actividades", "Tareas", Icons.AutoMirrored.Filled.List)
+    data object Revisar : Screen("cola_revision", "Revisar", Icons.Default.Assignment)
     data object Bitacora : Screen("bitacora", "Bitácora", Icons.Default.HistoryEdu)
     data object Mas : Screen("mas", "Más", Icons.Default.MoreHoriz)
 }
@@ -23,7 +28,13 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 @Composable
 fun MainScreen(viewModel: AppViewModel) {
     val navController = rememberNavController()
-    val items = listOf(Screen.Dashboard, Screen.Actividades, Screen.Bitacora, Screen.Mas)
+    val userRole by viewModel.userRole.collectAsState()
+
+    val items = if (UserRoles.isInstructor(userRole)) {
+        listOf(Screen.Dashboard, Screen.Actividades, Screen.Revisar, Screen.Bitacora, Screen.Mas)
+    } else {
+        listOf(Screen.Dashboard, Screen.Actividades, Screen.Bitacora, Screen.Mas)
+    }
 
     Scaffold(
         bottomBar = {
@@ -50,15 +61,29 @@ fun MainScreen(viewModel: AppViewModel) {
         }
     ) { innerPadding ->
         NavHost(navController, startDestination = Screen.Dashboard.route, Modifier.padding(innerPadding)) {
-            composable(Screen.Dashboard.route) { DashboardScreen(viewModel) }
+            composable(Screen.Dashboard.route) {
+                val role by viewModel.userRole.collectAsState()
+                if (UserRoles.isInstructor(role)) {
+                    InstructorDashboardScreen(viewModel, navController)
+                } else {
+                    DashboardScreen(viewModel, navController)
+                }
+            }
             composable(Screen.Actividades.route) { ActividadesScreen(viewModel, navController) }
             composable(Screen.Bitacora.route) { BitacoraScreen(viewModel) }
             composable(Screen.Mas.route) { MasScreen(viewModel, navController) }
+            composable("cola_revision") {
+                val context = LocalContext.current
+                val factory = AppViewModelFactory(context.applicationContext as Application)
+                val revisionViewModel: RevisionViewModel = viewModel(factory = factory)
+                ColaRevisionScreen(viewModel, revisionViewModel, navController)
+            }
             
             // Sub-pantallas
             composable("perfil") { PerfilScreen(viewModel, navController) }
             composable("asistencia") { AsistenciaScreen(viewModel, navController) }
             composable("novedades") { NovedadesScreen(viewModel, navController) }
+            composable("novedades_recibidas") { NovedadesRecibidasScreen(viewModel, navController) }
             composable("certificados") { CertificadosScreen(viewModel, navController) }
             composable("calendario") { CalendarioScreen(viewModel, navController) }
             composable("configuracion") { SettingsScreen(viewModel, navController) }
@@ -67,6 +92,13 @@ fun MainScreen(viewModel: AppViewModel) {
                 DetalleActividadScreen(id, viewModel, navController) 
             }
             composable("formulario_actividad") { FormularioActividadScreen(viewModel, navController) }
+            composable("revision/{actividadId}") { backStack ->
+                val actividadId = backStack.arguments?.getString("actividadId")?.toLong() ?: 0L
+                val context = LocalContext.current
+                val factory = AppViewModelFactory(context.applicationContext as Application)
+                val revisionViewModel: RevisionViewModel = viewModel(factory = factory)
+                RevisionEvidenciasScreen(actividadId, revisionViewModel, navController)
+            }
         }
     }
 }

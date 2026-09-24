@@ -32,5 +32,6 @@ data class EvidenciaEntity(
     val evidenciaUri: String = "",
     val mimeType: String = "",
     val tamanoBytes: Long = 0L,
-    val estadoSincronizacion: String = "LOCAL" // LOCAL, SUBIENDO, SINCRONIZADA, FALLIDA
+    val estadoSincronizacion: String = "LOCAL", // LOCAL, SUBIENDO, SINCRONIZADA, FALLIDA
+    val storagePath: String = ""
 )

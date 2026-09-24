@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kover)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -18,6 +19,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "SUPABASE_URL", "\"https://mksezhbttckzznbcjfvd.supabase.co\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"sb_publishable_V9JVjLH6cr8s9XKbNiAqFw_9b8eBfej\"")
     }
 
     buildFeatures {
@@ -91,6 +95,14 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
 
+    // Supabase
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.storage)
+    implementation(libs.ktor.client.android)
+    implementation(libs.kotlinx.serialization.json)
+
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -98,6 +110,12 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // Coil Image Loading
+    implementation(libs.coil.compose)
 
     // Tests
     testImplementation(libs.junit)

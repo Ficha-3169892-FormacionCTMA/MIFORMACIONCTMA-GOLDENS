@@ -6,5 +6,7 @@ data class DashboardData(
     val enProceso: Int = 0,
     val pendientes: Int = 0,
     val vencidas: Int = 0,
+    val fallidas: Int = 0,
+    val enRevision: Int = 0,
     val progresoGeneral: Int = 0
 )

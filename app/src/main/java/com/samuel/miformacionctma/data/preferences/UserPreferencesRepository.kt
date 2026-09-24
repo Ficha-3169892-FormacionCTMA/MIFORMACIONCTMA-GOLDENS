@@ -18,26 +18,29 @@ class UserPreferencesRepository(private val context: Context) {
         val USER_ROLE = stringPreferencesKey("user_role")
         val AUTH_TOKEN = stringPreferencesKey("auth_token")
         val USER_NAME = stringPreferencesKey("user_name")
+        val USER_EMAIL = stringPreferencesKey("user_email")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
         val FILTRO_PRIORIDAD = stringPreferencesKey("filtro_prioridad")
-        val NOTIFICACIONES_ENABLED = booleanPreferencesKey("notificaciones_enabled") // Semana 9
+        val NOTIFICACIONES_ENABLED = booleanPreferencesKey("notificaciones_enabled")
     }
 
     val userId: Flow<String?> = context.dataStore.data.map { it[PreferencesKeys.USER_ID] }
     val userRole: Flow<String?> = context.dataStore.data.map { it[PreferencesKeys.USER_ROLE] }
     val userName: Flow<String?> = context.dataStore.data.map { it[PreferencesKeys.USER_NAME] }
+    val userEmail: Flow<String?> = context.dataStore.data.map { it[PreferencesKeys.USER_EMAIL] }
     val themeMode: Flow<String> = context.dataStore.data.map { it[PreferencesKeys.THEME_MODE] ?: "SYSTEM" }
     val fontSizeScale: Flow<String> = context.dataStore.data.map { it[PreferencesKeys.FONT_SIZE_SCALE] ?: "MEDIUM" }
     val filtroPrioridad: Flow<String> = context.dataStore.data.map { it[PreferencesKeys.FILTRO_PRIORIDAD] ?: "TODAS" }
     val notificacionesEnabled: Flow<Boolean> = context.dataStore.data.map { it[PreferencesKeys.NOTIFICACIONES_ENABLED] ?: false }
 
-    suspend fun saveUser(id: String, role: String, token: String, name: String) {
+    suspend fun saveUser(id: String, role: String, token: String, name: String, email: String) {
         context.dataStore.edit { prefs ->
             prefs[PreferencesKeys.USER_ID] = id
             prefs[PreferencesKeys.USER_ROLE] = role
             prefs[PreferencesKeys.AUTH_TOKEN] = token
             prefs[PreferencesKeys.USER_NAME] = name
+            prefs[PreferencesKeys.USER_EMAIL] = email
         }
     }
 
@@ -47,6 +50,7 @@ class UserPreferencesRepository(private val context: Context) {
             prefs.remove(PreferencesKeys.USER_ROLE)
             prefs.remove(PreferencesKeys.AUTH_TOKEN)
             prefs.remove(PreferencesKeys.USER_NAME)
+            prefs.remove(PreferencesKeys.USER_EMAIL)
         }
     }
 

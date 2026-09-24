@@ -7,10 +7,11 @@ import java.time.LocalDate
 @Entity(tableName = "bitacoras")
 data class BitacoraEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val userId: String,
+    val autorId: String,
     val fecha: LocalDate,
     val titulo: String,
     val contenido: String,
     val horas: Int,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val remoteId: Long? = null
 )

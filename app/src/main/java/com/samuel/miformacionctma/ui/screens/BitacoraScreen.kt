@@ -1,5 +1,6 @@
 package com.samuel.miformacionctma.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.samuel.miformacionctma.data.local.entities.BitacoraEntity
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.components.OfflineIndicator
 
@@ -20,6 +22,69 @@ fun BitacoraScreen(viewModel: AppViewModel) {
     var titulo by remember { mutableStateOf("") }
     var contenido by remember { mutableStateOf("") }
     var horas by remember { mutableStateOf("") }
+    var bitacoraEnEdicion by remember { mutableStateOf<BitacoraEntity?>(null) }
+
+    if (bitacoraEnEdicion != null) {
+        val item = bitacoraEnEdicion!!
+        var tituloEditado by remember(item) { mutableStateOf(item.titulo) }
+        var contenidoEditado by remember(item) { mutableStateOf(item.contenido) }
+        var horasEditadas by remember(item) { mutableStateOf(item.horas.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { bitacoraEnEdicion = null },
+            title = { Text("Editar Bitácora") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = tituloEditado,
+                        onValueChange = { tituloEditado = it },
+                        label = { Text("Título") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = contenidoEditado,
+                        onValueChange = { contenidoEditado = it },
+                        label = { Text("Descripción") },
+                        modifier = Modifier.fillMaxWidth().height(100.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = horasEditadas,
+                        onValueChange = { horasEditadas = it },
+                        label = { Text("Horas") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val h = horasEditadas.toIntOrNull() ?: 0
+                        if (tituloEditado.isNotBlank() && contenidoEditado.isNotBlank() && h > 0) {
+                            viewModel.editarBitacora(
+                                item.id,
+                                item.remoteId,
+                                item.fecha,
+                                tituloEditado,
+                                contenidoEditado,
+                                h
+                            )
+                            bitacoraEnEdicion = null
+                        }
+                    },
+                    enabled = tituloEditado.isNotBlank() && contenidoEditado.isNotBlank() && (horasEditadas.toIntOrNull() ?: 0) > 0
+                ) {
+                    Text("GUARDAR CAMBIOS")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { bitacoraEnEdicion = null }) {
+                    Text("CANCELAR")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Mi Bitácora") }) }
@@ -76,7 +141,12 @@ fun BitacoraScreen(viewModel: AppViewModel) {
             
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(bitacoras) { bitacora ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { bitacoraEnEdicion = bitacora }
+                    ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(text = bitacora.fecha.toString(), style = MaterialTheme.typography.labelSmall)

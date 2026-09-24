@@ -15,13 +15,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.samuel.miformacionctma.ui.AppViewModel
+import com.samuel.miformacionctma.util.UserRoles
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(viewModel: AppViewModel, navController: NavController) {
     val userName by viewModel.userName.collectAsState()
     val userRole by viewModel.userRole.collectAsState()
-    val userId by viewModel.userId.collectAsState()
+    val userEmail by viewModel.userEmail.collectAsState()
+
+    val roleLabel = when {
+        UserRoles.isAprendiz(userRole) -> "Aprendiz"
+        UserRoles.isInstructor(userRole) -> "Instructor"
+        else -> userRole ?: "Usuario SENA"
+    }
 
     Scaffold(
         topBar = {
@@ -50,16 +57,16 @@ fun PerfilScreen(viewModel: AppViewModel, navController: NavController) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = userName ?: "Usuario SENA", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(text = if (userRole == "LEARNER") "Aprendiz" else "Instructor", color = Color.Gray)
+            Text(text = roleLabel, color = Color.Gray)
             
             Spacer(modifier = Modifier.height(32.dp))
             
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    ProfileItem(label = "Documento", value = "DOC_$userId")
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    ProfileItem(label = "Correo", value = "$userId@sena.edu.co")
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    ProfileItem(label = "Rol", value = roleLabel)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    ProfileItem(label = "Correo Real", value = userEmail ?: "Sin correo registrado")
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     ProfileItem(label = "Centro", value = "CTMA - Medellín")
                 }
             }

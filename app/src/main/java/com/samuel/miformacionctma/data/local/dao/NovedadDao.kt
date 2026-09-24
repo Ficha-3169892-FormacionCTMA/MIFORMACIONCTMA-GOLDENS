@@ -9,6 +9,12 @@ interface NovedadDao {
     @Query("SELECT * FROM novedades WHERE userId = :userId ORDER BY fecha DESC")
     fun getNovedadesByUser(userId: String): Flow<List<NovedadEntity>>
 
+    @Query("SELECT * FROM novedades WHERE userId != :currentUserId ORDER BY fecha DESC")
+    fun getNovedadesRecibidas(currentUserId: String): Flow<List<NovedadEntity>>
+
+    @Query("SELECT * FROM novedades WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getNovedadByRemoteId(remoteId: Long): NovedadEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNovedad(novedad: NovedadEntity)
 

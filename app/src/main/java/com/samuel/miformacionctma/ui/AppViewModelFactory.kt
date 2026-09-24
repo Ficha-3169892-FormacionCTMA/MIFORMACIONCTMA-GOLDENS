@@ -8,10 +8,16 @@ import com.samuel.miformacionctma.MainApplication
 class AppViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val container = (application as MainApplication).container
         if (modelClass.isAssignableFrom(AppViewModel::class.java)) {
-            val container = (application as MainApplication).container
             return AppViewModel(application, container) as T
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
+            return AuthViewModel(container.authRepository) as T
+        }
+        if (modelClass.isAssignableFrom(RevisionViewModel::class.java)) {
+            return RevisionViewModel(container.revisionRepository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class ${modelClass.name}")
     }
 }

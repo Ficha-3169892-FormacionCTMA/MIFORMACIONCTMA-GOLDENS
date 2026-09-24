@@ -9,6 +9,9 @@ interface EvidenciaDao {
     @Query("SELECT * FROM evidencias WHERE actividadId = :actividadId")
     fun getEvidenciasByActividad(actividadId: Long): Flow<List<EvidenciaEntity>>
 
+    @Query("SELECT * FROM evidencias WHERE actividadId = :actividadId AND userId = :userId")
+    suspend fun getEvidenciasByActividadYUsuario(actividadId: Long, userId: String): List<EvidenciaEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvidencia(evidencia: EvidenciaEntity)
 
@@ -17,4 +20,7 @@ interface EvidenciaDao {
 
     @Update
     suspend fun updateEvidencia(evidencia: EvidenciaEntity)
+
+    @Query("DELETE FROM evidencias WHERE actividadId = :actividadId AND userId = :userId")
+    suspend fun deleteEvidenciasByActividadYUsuario(actividadId: Long, userId: String)
 }

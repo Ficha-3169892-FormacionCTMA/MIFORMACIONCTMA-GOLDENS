@@ -7,7 +7,7 @@ import java.time.LocalDate
 
 @Entity(tableName = "actividades")
 data class ActividadEntity(
-    @PrimaryKey val id: Long,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val titulo: String,
     val descripcion: String?,
     val fechaInicio: LocalDate,
@@ -15,5 +15,6 @@ data class ActividadEntity(
     val progreso: Int,
     val prioridad: Prioridad,
     val instructorId: String,
-    val isSynced: Boolean = true
+    val isSynced: Boolean = true,
+    val remoteId: Long? = null
 )

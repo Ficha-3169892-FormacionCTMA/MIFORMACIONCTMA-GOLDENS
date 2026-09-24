@@ -1,24 +1,27 @@
 package com.samuel.miformacionctma.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.samuel.miformacionctma.ui.AppViewModel
+import com.samuel.miformacionctma.ui.AuthUiState
+import com.samuel.miformacionctma.ui.AuthViewModel
 
 @Composable
-fun LoginScreen(viewModel: AppViewModel) {
+fun LoginScreen(
+    authViewModel: AuthViewModel,
+    onNavigateToRegister: () -> Unit
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("LEARNER") }
+
+    val uiState by authViewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -38,8 +41,17 @@ fun LoginScreen(viewModel: AppViewModel) {
             fontSize = 14.sp,
             color = Color.Gray
         )
-        
-        Spacer(modifier = Modifier.height(48.dp))
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        if (uiState is AuthUiState.Error) {
+            Text(
+                text = (uiState as AuthUiState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
 
         OutlinedTextField(
             value = email,
@@ -60,29 +72,33 @@ fun LoginScreen(viewModel: AppViewModel) {
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = role == "LEARNER", onClick = { role = "LEARNER" })
-            Text("Aprendiz")
-            Spacer(modifier = Modifier.width(16.dp))
-            RadioButton(selected = role == "INSTRUCTOR", onClick = { role = "INSTRUCTOR" })
-            Text("Instructor")
-        }
-
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { 
-                if (email.isNotBlank() && password.length >= 6) {
-                    viewModel.login(email, role, email.split("@")[0])
-                }
+            onClick = {
+                authViewModel.login(email, password)
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF39A900)),
-            enabled = email.isNotBlank() && password.length >= 6
+            enabled = email.isNotBlank() && password.length >= 6 && uiState !is AuthUiState.Loading
         ) {
-            Text("INGRESAR")
+            if (uiState is AuthUiState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White
+                )
+            } else {
+                Text("INGRESAR")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = {
+            authViewModel.resetState()
+            onNavigateToRegister()
+        }) {
+            Text("¿No tienes cuenta? Regístrate aquí")
         }
     }
 }

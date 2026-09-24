@@ -10,7 +10,9 @@ data class ActividadFormativa(
     val fechaFin: LocalDate,
     val progreso: Int,
     val diasRestantes: Int,
-    val prioridad: Prioridad
+    val prioridad: Prioridad,
+    val instructorId: String = "",
+    val remoteId: Long? = null
 ) {
     init {
         require(titulo.isNotBlank()) { "El título no puede estar vacío" }

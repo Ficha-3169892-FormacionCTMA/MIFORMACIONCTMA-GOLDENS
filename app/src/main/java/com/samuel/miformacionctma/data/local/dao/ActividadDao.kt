@@ -15,6 +15,12 @@ interface ActividadDao {
     @Query("SELECT * FROM actividades WHERE id = :id")
     suspend fun getActividadById(id: Long): ActividadEntity?
 
+    @Query("SELECT * FROM actividades WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getActividadByRemoteId(remoteId: Long): ActividadEntity?
+
+    @Query("SELECT * FROM actividades WHERE isSynced = 0")
+    suspend fun getUnsyncedActividades(): List<ActividadEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertActividades(actividades: List<ActividadEntity>)
 
@@ -26,4 +32,7 @@ interface ActividadDao {
 
     @Delete
     suspend fun deleteActividad(actividad: ActividadEntity)
+
+    @Query("DELETE FROM actividades WHERE id = :id")
+    suspend fun deleteActividadById(id: Long)
 }

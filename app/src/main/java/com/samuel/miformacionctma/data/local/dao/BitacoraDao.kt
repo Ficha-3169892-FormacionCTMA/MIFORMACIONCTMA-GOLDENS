@@ -6,8 +6,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BitacoraDao {
-    @Query("SELECT * FROM bitacoras WHERE userId = :userId ORDER BY fecha DESC")
-    fun getBitacorasByUser(userId: String): Flow<List<BitacoraEntity>>
+    @Query("SELECT * FROM bitacoras WHERE autorId = :autorId ORDER BY fecha DESC")
+    fun getBitacorasByAutor(autorId: String): Flow<List<BitacoraEntity>>
+
+    @Query("SELECT * FROM bitacoras WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getBitacoraByRemoteId(remoteId: Long): BitacoraEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBitacora(bitacora: BitacoraEntity)
@@ -17,4 +20,7 @@ interface BitacoraDao {
 
     @Update
     suspend fun updateBitacora(bitacora: BitacoraEntity)
+
+    @Query("DELETE FROM bitacoras WHERE id = :id")
+    suspend fun deleteBitacoraById(id: Long)
 }

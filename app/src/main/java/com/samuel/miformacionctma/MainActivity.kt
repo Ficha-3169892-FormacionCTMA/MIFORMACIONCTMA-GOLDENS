@@ -6,18 +6,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.samuel.miformacionctma.ui.AppViewModel
 import com.samuel.miformacionctma.ui.AppViewModelFactory
+import com.samuel.miformacionctma.ui.AuthViewModel
 import com.samuel.miformacionctma.ui.MainScreen
 import com.samuel.miformacionctma.ui.screens.LoginScreen
+import com.samuel.miformacionctma.ui.screens.RegisterScreen
 import com.samuel.miformacionctma.ui.theme.MiFormacionCTMATheme
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Typography
-import androidx.compose.material3.MaterialTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,13 +29,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
-            // Usamos la fábrica AppViewModelFactory para inyectar correctamente el AppContainer del Service Locator
-            val viewModel: AppViewModel = viewModel(
-                factory = AppViewModelFactory(context.applicationContext as Application)
-            )
-            val userId by viewModel.userId.collectAsState()
-            val themeMode by viewModel.themeMode.collectAsState()
-            val fontSizeScale by viewModel.fontSizeScale.collectAsState()
+            val factory = AppViewModelFactory(context.applicationContext as Application)
+            
+            val appViewModel: AppViewModel = viewModel(factory = factory)
+            val authViewModel: AuthViewModel = viewModel(factory = factory)
+
+            val userId by appViewModel.userId.collectAsState()
+            val themeMode by appViewModel.themeMode.collectAsState()
+            val fontSizeScale by appViewModel.fontSizeScale.collectAsState()
 
             val isDarkTheme = when (themeMode) {
                 "LIGHT" -> false
@@ -39,7 +44,6 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
 
-            // Adaptar tipografía según preferencia de accesibilidad (HU-15)
             val baseTypography = MaterialTheme.typography
             val scaleFactor = when(fontSizeScale) {
                 "SMALL" -> 0.8f
@@ -56,12 +60,26 @@ class MainActivity : ComponentActivity() {
             )
 
             MiFormacionCTMATheme(darkTheme = isDarkTheme) {
-                // Aplicar tipografía personalizada envolviendo el contenido
                 MaterialTheme(typography = customTypography) {
                     if (userId == null) {
-                        LoginScreen(viewModel)
+                        val authNavController = rememberNavController()
+                        NavHost(navController = authNavController, startDestination = "login") {
+                            composable("login") {
+                                LoginScreen(
+                                    authViewModel = authViewModel,
+                                    onNavigateToRegister = { authNavController.navigate("register") }
+                                )
+                            }
+                            composable("register") {
+                                RegisterScreen(
+                                    authViewModel = authViewModel,
+                                    onNavigateBackToLogin = { authNavController.popBackStack() },
+                                    onRegisterSuccess = { authNavController.popBackStack() }
+                                )
+                            }
+                        }
                     } else {
-                        MainScreen(viewModel)
+                        MainScreen(appViewModel)
                     }
                 }
             }
