@@ -4,7 +4,19 @@ import com.samuel.miformacionctma.data.local.entities.ActividadEntity
 import com.samuel.miformacionctma.model.ActividadFormativa
 import com.samuel.miformacionctma.model.Prioridad
 import com.samuel.miformacionctma.network.ActividadDto
+import com.samuel.miformacionctma.network.ActividadSupabaseDto
 import java.time.LocalDate
+
+fun createActividadSupabaseDto(
+    id: Long? = 1L,
+    titulo: String = "Actividad de Prueba",
+    descripcion: String? = "Descripción de prueba",
+    fechaInicio: String = "2024-01-01",
+    fechaFin: String = "2024-01-10",
+    progreso: Int = 0,
+    prioridad: String = "MEDIA",
+    instructorId: String = "inst_01"
+) = ActividadSupabaseDto(id, titulo, descripcion, fechaInicio, fechaFin, progreso, prioridad, instructorId)
 
 fun createActividadDto(
     id: Long = 1L,

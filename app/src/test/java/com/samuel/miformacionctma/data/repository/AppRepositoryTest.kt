@@ -1,6 +1,6 @@
 package com.samuel.miformacionctma.data.repository
 
-import com.samuel.miformacionctma.createActividadDto
+import com.samuel.miformacionctma.createActividadSupabaseDto
 import com.samuel.miformacionctma.data.local.AppDatabase
 import com.samuel.miformacionctma.data.local.dao.ActividadDao
 import com.samuel.miformacionctma.network.NetworkError
@@ -33,14 +33,14 @@ class AppRepositoryTest {
 
     @After
     fun teardown() {
-        // Limpieza de mocks según requerimiento Fase 3
+        // Limpieza de mocks
         confirmVerified(mockDao, mockRemoteDataSource)
     }
 
     @Test
     fun `refreshActividades llama al remote y guarda en local al tener exito`() = runTest {
         // GIVEN
-        val fakeDtos = listOf(createActividadDto(id = 100L, titulo = "Sincronizada"))
+        val fakeDtos = listOf(createActividadSupabaseDto(id = 100L, titulo = "Sincronizada"))
         coEvery { mockRemoteDataSource.getActividades() } returns NetworkResult.Success(fakeDtos)
 
         // WHEN
@@ -49,7 +49,8 @@ class AppRepositoryTest {
         // THEN
         assertTrue(result is NetworkResult.Success)
         coVerify(exactly = 1) { mockRemoteDataSource.getActividades() }
-        coVerify(exactly = 1) { mockDao.insertActividades(any()) }
+        coVerify(exactly = 1) { mockDao.getActividadByRemoteId(100L) }
+        coVerify(exactly = 1) { mockDao.insertActividad(any()) }
     }
 
     @Test
@@ -65,6 +66,7 @@ class AppRepositoryTest {
         assertEquals(NetworkError.SinConexion, (result as NetworkResult.Error).errorType)
         
         coVerify(exactly = 1) { mockRemoteDataSource.getActividades() }
-        coVerify(exactly = 0) { mockDao.insertActividades(any()) }
+        coVerify(exactly = 0) { mockDao.getActividadByRemoteId(any()) }
+        coVerify(exactly = 0) { mockDao.insertActividad(any()) }
     }
 }

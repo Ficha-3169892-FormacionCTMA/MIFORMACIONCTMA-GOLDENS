@@ -9,6 +9,7 @@ import com.samuel.miformacionctma.data.local.entities.AsistenciaEntity
 import com.samuel.miformacionctma.data.local.entities.BitacoraEntity
 import com.samuel.miformacionctma.data.local.entities.EvidenciaEntity
 import com.samuel.miformacionctma.data.local.entities.NovedadEntity
+import com.samuel.miformacionctma.data.repository.PerfilDto
 import com.samuel.miformacionctma.network.*
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
@@ -409,6 +410,25 @@ class SyncManager(
                 .select()
                 .decodeList<NovedadSupabaseDto>()
 
+            if (list.isEmpty()) return
+
+            val autorIds = list.map { it.autorId }.distinct()
+            val perfiles = if (autorIds.isNotEmpty()) {
+                try {
+                    SupabaseProvider.client.postgrest["perfiles"]
+                        .select {
+                            filter {
+                                isIn("id", autorIds)
+                            }
+                        }
+                        .decodeList<PerfilDto>()
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } else emptyList()
+
+            val mapaPerfiles = perfiles.associateBy { it.id }
+
             for (dto in list) {
                 val remoteId = dto.id ?: continue
                 val existing = db.novedadDao().getNovedadByRemoteId(remoteId)
@@ -416,6 +436,9 @@ class SyncManager(
 
                 val fechaInicio = try { LocalDate.parse(dto.fechaInicio) } catch (e: Exception) { LocalDate.now() }
                 val fechaFin = try { dto.fechaFin?.let { LocalDate.parse(it) } } catch (e: Exception) { null }
+
+                val perfil = mapaPerfiles[dto.autorId]
+                val autorCorreo = perfil?.correo ?: perfil?.nombre ?: dto.autorId
 
                 val entity = NovedadEntity(
                     id = existing?.id ?: 0L,
@@ -428,7 +451,8 @@ class SyncManager(
                     estado = existing?.estado ?: "PENDIENTE",
                     isSynced = true,
                     remoteId = remoteId,
-                    tipoAutor = dto.tipoAutor
+                    tipoAutor = dto.tipoAutor,
+                    autorCorreo = autorCorreo
                 )
                 db.novedadDao().insertNovedad(entity)
             }
