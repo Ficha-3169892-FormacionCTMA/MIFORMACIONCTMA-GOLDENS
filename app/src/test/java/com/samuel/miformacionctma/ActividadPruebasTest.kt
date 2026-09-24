@@ -11,19 +11,19 @@ class ActividadPruebasTest {
 
     // CP-01
     @Test
-    fun `CP-01 - Progreso negativo retorna estado Pendiente`() {
-        val actividad = ActividadFormativa(
-            id = 1L,
-            titulo = "Kotlin",
-            descripcion = null,
-            fechaInicio = fechaHoy,
-            fechaFin = fechaHoy.plusDays(5),
-            progreso = -10,
-            diasRestantes = 5,
-            prioridad = Prioridad.BAJA
-        )
-
-        assertEquals("Pendiente", estadoActividad(actividad))
+    fun `CP-01 - Progreso negativo lanza IllegalArgumentException`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ActividadFormativa(
+                id = 1L,
+                titulo = "Kotlin",
+                descripcion = null,
+                fechaInicio = fechaHoy,
+                fechaFin = fechaHoy.plusDays(5),
+                progreso = -10,
+                diasRestantes = 5,
+                prioridad = Prioridad.BAJA
+            )
+        }
     }
 
     // CP-02
@@ -42,7 +42,7 @@ class ActividadPruebasTest {
 
         val estadoTexto = estadoActividad(actividad)
 
-        assertEquals("Pendiente", estadoTexto)
+        assertEquals("PENDIENTE", estadoTexto)
     }
 
     // CP-03
@@ -59,7 +59,7 @@ class ActividadPruebasTest {
             prioridad = Prioridad.MEDIA
         )
 
-        assertEquals("En Proceso", estadoActividad(actividad))
+        assertEquals("EN PROCESO", estadoActividad(actividad))
     }
 
     // CP-04
@@ -76,7 +76,7 @@ class ActividadPruebasTest {
             prioridad = Prioridad.ALTA
         )
 
-        assertEquals("En Proceso", estadoActividad(actividad))
+        assertEquals("EN PROCESO", estadoActividad(actividad))
     }
 
     // CP-05
@@ -93,6 +93,6 @@ class ActividadPruebasTest {
             prioridad = Prioridad.ALTA
         )
 
-        assertEquals("Completada", estadoActividad(actividad))
+        assertEquals("COMPLETADA", estadoActividad(actividad))
     }
 }
