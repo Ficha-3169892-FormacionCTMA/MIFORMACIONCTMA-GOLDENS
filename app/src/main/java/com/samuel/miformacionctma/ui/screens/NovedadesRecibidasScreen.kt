@@ -115,7 +115,7 @@ fun NovedadesRecibidasScreen(viewModel: AppViewModel, navController: NavControll
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    text = "Reportado por: ${novedad.userId}",
+                                    text = "Reportado por: ${novedad.autorCorreo ?: novedad.userId}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -153,7 +153,7 @@ fun NovedadesRecibidasScreen(viewModel: AppViewModel, navController: NavControll
                             Text(text = "Motivo / Explicación:", fontWeight = FontWeight.SemiBold)
                             Text(text = novedad.motivo, style = MaterialTheme.typography.bodyMedium)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Reportado por ID: ${novedad.userId}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            Text(text = "Reportado por: ${novedad.autorCorreo ?: novedad.userId}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         }
                     },
                     confirmButton = {

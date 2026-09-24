@@ -16,5 +16,6 @@ data class NovedadEntity(
     val estado: String = "PENDIENTE", // "PENDIENTE", "REVISION", "APROBADA", "RECHAZADA"
     val isSynced: Boolean = false,
     val remoteId: Long? = null,
-    val tipoAutor: String = "aprendiz"
+    val tipoAutor: String = "aprendiz",
+    val autorCorreo: String? = null
 )

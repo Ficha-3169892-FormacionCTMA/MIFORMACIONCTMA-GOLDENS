@@ -1,63 +1,45 @@
 package com.samuel.miformacionctma
 
-import com.samuel.miformacionctma.network.ApiService
-import kotlinx.coroutines.runBlocking
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
-import org.junit.Assert.*
-import org.junit.Before
+import com.samuel.miformacionctma.network.BitacoraSupabaseDto
+import kotlinx.serialization.json.Json
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 
 class BitacoraApiTest {
 
-    private lateinit var mockWebServer: MockWebServer
-    private lateinit var apiService: ApiService
+    @Test
+    fun `BitacoraSupabaseDto serializa y deserializa correctamente los campos`() {
+        val dtoOriginal = BitacoraSupabaseDto(
+            id = 10L,
+            autorId = "usr_123",
+            fecha = "2026-10-15",
+            titulo = "Bitácora diaria",
+            contenido = "Trabajé en el módulo de bitácoras",
+            horas = 4
+        )
 
-    @Before
-    fun setup() {
-        mockWebServer = MockWebServer()
-        mockWebServer.start()
-        apiService = Retrofit.Builder()
-            .baseUrl(mockWebServer.url("/"))
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(ApiService::class.java)
-    }
+        val jsonText = Json.encodeToString(BitacoraSupabaseDto.serializer(), dtoOriginal)
+        val dtoDeserializado = Json.decodeFromString(BitacoraSupabaseDto.serializer(), jsonText)
 
-    @After
-    fun teardown() {
-        mockWebServer.shutdown()
+        assertEquals(dtoOriginal.id, dtoDeserializado.id)
+        assertEquals(dtoOriginal.autorId, dtoDeserializado.autorId)
+        assertEquals(dtoOriginal.fecha, dtoDeserializado.fecha)
+        assertEquals(dtoOriginal.titulo, dtoDeserializado.titulo)
+        assertEquals(dtoOriginal.contenido, dtoDeserializado.contenido)
+        assertEquals(dtoOriginal.horas, dtoDeserializado.horas)
     }
 
     @Test
-    fun `cuando aprendiz intenta ver notas de otro aprendiz retorna HTTP 403 Forbidden`() = runBlocking {
-        // Simula respuesta 403 del backend
-        val mockResponse = MockResponse()
-            .setResponseCode(403)
-            .setBody("""{"error": "Forbidden", "message": "Acceso denegado a datos de otro aprendiz"}""")
-        mockWebServer.enqueue(mockResponse)
+    fun `BitacoraSupabaseDto maneja id nulo por defecto para nuevos inserts`() {
+        val dto = BitacoraSupabaseDto(
+            autorId = "usr_456",
+            fecha = "2026-10-15",
+            titulo = "Nueva bitácora",
+            contenido = "Prueba sin id remoto",
+            horas = 2
+        )
 
-        val response = apiService.obtenerNotasAprendiz(aprendizId = "1002")
-
-        assertEquals(403, response.code()) // Validar status code HTTP
-        assertFalse(response.isSuccessful)
-        assertTrue(response.errorBody()?.string()?.contains("Acceso denegado") == true)
-    }
-
-    @Test
-    fun `cuando bitacora supera 2MB retorna HTTP 422 Unprocessable Content`() = runBlocking {
-        // Simula rechazo por regla de negocio en tamaño de archivo
-        val mockResponse = MockResponse()
-            .setResponseCode(422)
-            .setBody("""{"message": "El archivo supera el limite maximo de 2 MB"}""")
-        mockWebServer.enqueue(mockResponse)
-
-        val response = apiService.subirBitacora(fileData = "dummy_data_3mb")
-
-        assertEquals(422, response.code())
-        assertFalse(response.isSuccessful)
+        assertNull(dto.id)
     }
 }
