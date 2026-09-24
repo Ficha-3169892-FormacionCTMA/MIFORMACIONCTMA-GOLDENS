@@ -151,3 +151,7 @@ Ejecutar `./gradlew test` para validar la lógica de negocio y la integración c
 para ejecutar todos los test:
 
 ./gradlew :app:testAllUnitTests
+
+
+Usuario Instructor de prueba:wil@sena.edu.co
+contraseña:12345678W
